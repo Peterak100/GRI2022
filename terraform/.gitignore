@@ -1,0 +1,6 @@
+*.tfvars
+.terraform
+.terraform*
+key.*
+*.auto.*
+*.csv

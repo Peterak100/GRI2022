@@ -1,0 +1,24 @@
+description,filter
+"Exclude all records where spatial validity is ""false""","-spatiallyValid:""false"""
+Exclude all records with an assertion that the scientific name provided does not match any of the names lists used by the ALA.  For a full explanation of the ALA name matching process see https://github.com/AtlasOfLivingAustralia/ala-name-matching,-assertions:TAXON_MATCH_NONE
+"Exclude all records with an assertion that the scientific name provided is not structured as a valid scientific name. Also catches rank values or values such as ""UNKNOWN""",-assertions:INVALID_SCIENTIFIC_NAME
+Exclude all records with an assertion that the name and classification supplied can't be used to choose between 2 homonyms,-assertions:TAXON_HOMONYM
+"Exclude all records with an assertion that kingdom provided doesn't match a known kingdom e.g. Animalia, Plantae",-assertions:UNKNOWN_KINGDOM
+Exclude all records with an assertion that the scientific name provided in the record does not match the expected taxonomic scope of the resource e.g. Mammal records attributed to bird watch group,-assertions:TAXON_SCOPE_MISMATCH
+Exclude all records with an assertion of the occurence is cultivated or escaped from captivity,"-establishmentMeans:""MANAGED"""
+Exclude all records with an assertion of latitude value provided is zero,-decimalLatitude:0
+Exclude all records with an assertion of longitude value provided is zero,-decimalLongitude:0
+Exclude all records with an assertion of  latitude and longitude have been transposed,"-assertions:""PRESUMED_SWAPPED_COORDINATE"""
+Exclude all records with an assertion of coordinates are the exact centre of the state or territory,"-assertions:""COORDINATES_CENTRE_OF_STATEPROVINCE"""
+Exclude all records with an assertion of  coordinates are the exact centre of the country,"-assertions:""COORDINATES_CENTRE_OF_COUNTRY"""
+"Exclude all records with ""Latitude is negated"" warning","-assertions:""PRESUMED_NEGATED_LATITUDE"""
+"Exclude all records with ""Longitude is negated"" warning","-assertions:""PRESUMED_NEGATED_LONGITUDE"""
+Exclude duplicates from different datasets that are not the representative record,"-(duplicate_status:""ASSOCIATED"" AND duplicateType:""DIFFERENT_DATASET"")"
+Exclude all records where coordinate uncertainty (in metres) is greater than 10km,-coordinateUncertaintyInMeters:[10001 TO *]
+Exclude all records with unresolved user  assertions,-userAssertions:50001
+Exclude all records with unconfirmed  user assertions,-userAssertions:50005
+Exclude all records where outlier layer count is 3 or more,-outlierLayerCount:[3 TO *]
+"Exclude all records where Record type is ""Fossil specimen""","-basisOfRecord:""FOSSIL_SPECIMEN"""
+"Exclude all records where Record type is ""EnvironmentalDNA""","-(basisOfRecord:""MATERIAL_SAMPLE"" AND contentTypes:""EnvironmentalDNA"")"
+"Exclude all records where Presence/Absence is ""absent""",-occurrenceStatus:ABSENT
+Exclude all records where year is prior to 1700,-year:[* TO 1700]

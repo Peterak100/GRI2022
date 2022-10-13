@@ -1,0 +1,114 @@
+## reworking of common.R
+### The following 8 packages are required (better to install manually?)
+# c("galah","fpc","lubridate","sf","terra","tidyverse","fs","RcppTOML")
+
+library(galah)
+library(fpc) # has dbscan
+library(lubridate)
+library(sf)
+library(fs)
+library(tidyverse)
+library(RcppTOML)
+library(terra)
+
+## this needs to be set each session:
+galah_config(email = "peterkriesner@yahoo.com", download_reason_id = 0,
+             verbose = TRUE)
+
+# Load values --------
+
+# Primary path for all input data
+datapath <- file.path(path_home(), "data")
+
+## Paths to particular files and folders
+taxapath <- file.path(datapath, "taxa")
+groupingspath <- file.path(datapath, "groupings")
+
+# metric reference system epsg code
+METRIC_EPSG <- 3111
+# lat/lon reference system epsg code
+LATLON_EPSG <- 4326
+
+BATCH_TAXA_CSV <- "batch_taxa.csv"
+BATCH_TAXA_CSV_PATH <- file.path(datapath, BATCH_TAXA_CSV)
+GALAH_MAXROWS <- 700
+
+# Load main taxa dataframe from csv ------
+taxa <- read.csv(BATCH_TAXA_CSV_PATH, header = TRUE)
+# head(taxa[,c(1:3,38)])
+
+# Access config.toml file and load 13 config variables --------
+CONFIG_FILE <- "config.toml"
+CONFIG_PATH <- file.path(datapath, CONFIG_FILE)
+list2env(RcppTOML::parseTOML(file.path(datapath, CONFIG_FILE)), globalenv())
+## expanded basisOfRecord (cannot put >1 option in TOML file?):
+## other options are:
+## "MACHINE_OBSERVATION","OBSERVATION","UNKNOWN"
+BASIS3 <- c(BASIS, "MATERIAL_SAMPLE", "PRESERVED_SPECIMEN", "OBSERVATION")
+
+HABITAT_RASTER <- "habitat.tif"
+HABITAT_RASTER_PATH <- file.path(datapath, HABITAT_RASTER)
+FIRE_SEVERITY_RASTER <- "fire_severity.tif"
+FIRE_SEVERITY_RASTER_PATH <- file.path(datapath, FIRE_SEVERITY_RASTER)
+
+RESISTANCE_RASTER <- "resistance.tif"
+# Plot rasters to test them...
+# HABITAT_RASTER_PATH |> terra::rast() |> plot()
+# FIRE_SEVERITY_RASTER_PATH |> terra::rast() |> plot()
+
+## an adjustment for buffering of observation record points
+##  slightly < 0.5 (i.e. half of epsilon) to avoid ambiguity
+EPSILON_SENSITIVITY_SCALAR <- 0.498
+# Define timespan
+TIMESPAN <- c(TIME_START:TIME_END)
+# In case downloads run out of time
+options(timeout=500)
+
+mask_layer <- terra::rast(HABITAT_RASTER_PATH) < 0
+# new code (Sept 2022):
+### fix the projection for habitat.tif ###
+mask_layer <- terra::project(mask_layer, paste0("EPSG:", METRIC_EPSG))
+# cat(terra::crs(mask_layer))
+# terra::plot(mask_layer) # errors first time this runs??
+
+
+# functions --------
+
+# Get the directory path for files relating to a specific taxon
+taxon_path <- function(taxon, taxapath) {
+  # We use underscores in the directory name
+  underscored <- gsub(" ", "_", taxon$ala_search_term)[[1]]
+  taxonpath <- file.path(taxapath, underscored)
+  # Create the directory if it doesn't exist yet
+  dir.create(taxonpath, recursive = TRUE)
+  return(taxonpath)
+}
+
+# Download from a URL if the file doesn't exist already
+maybe_download <- function(url, path) {
+  if (!file.exists(path)) {
+    download.file(url, path)
+  }
+}
+
+# Download from s3 bucket if it is passed as a command line argument
+args = commandArgs(trailingOnly=TRUE)
+if (length(args) > 0) {
+  bucket_url <- paste0(args[1], "/")
+  batch_taxa_url <- paste0(bucket_url, BATCH_TAXA_CSV)
+  config_url <- paste0(bucket_url, CONFIG_FILE)
+  habitat_raster_url <- paste0(bucket_url, HABITAT_RASTER)
+  fire_severity_raster_url <- paste0(bucket_url, FIRE_SEVERITY_RASTER)
+  
+  # Download
+  maybe_download(fire_severity_raster_url, FIRE_SEVERITY_RASTER_PATH)
+  maybe_download(habitat_raster_url, HABITAT_RASTER_PATH)
+  # If we are on aws batch, always download updated taxa and config
+  if (Sys.getenv("AWS_BATCH_CE_NAME") != "") {
+    download.file(batch_taxa_url, BATCH_TAXA_CSV_PATH)
+    download.file(config_url, CONFIG_PATH)
+  } else {
+    maybe_download(batch_taxa_url, BATCH_TAXA_CSV_PATH)
+    maybe_download(config_url, CONFIG_PATH)
+  }
+}
