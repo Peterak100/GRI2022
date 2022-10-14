@@ -1,4 +1,4 @@
-# 
+# for testing of these functions see: test4.R
 
 # Invert percentage from % habitat quality to % dispersal resistance
 habitat_to_resistance <- function(habitat_raster) {

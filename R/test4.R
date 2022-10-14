@@ -4,10 +4,9 @@ taxonB <- isolation_by_resistance_taxa[14,]
 taxonB[c(1,2)]
 
 
-
 ## path to relevant 'preclusters.tif' file
-crop_filename23 <- file.path(taxon_path(taxonB, taxapath),
-                paste0("preclusters", ".tif"))
+crop_filename23 <- suppressWarnings(file.path(taxon_path(taxonB, taxapath),
+            paste0("preclusters", ".tif")))
 
         if (taxonB$resist_model_type[[1]] == "Species") {
           download_hdm(taxonB, taxapath, crop_filename)
@@ -15,7 +14,13 @@ crop_filename23 <- file.path(taxon_path(taxonB, taxapath),
           use_generic_hdm(taxonB, taxapath, crop_filename)
         }
 
+
+
+# this generates and saves a particular version of the 'resistance.tif' file
+## derived from the generic 'habitat.tif' but converted to resistance
+## values and cropped to match the particular 'preclusters.tif' file
 use_generic_hdm(taxonB, taxapath, crop_filename23)
+
 
 
 # Download the HDM layer for this taxon
