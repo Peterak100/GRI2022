@@ -8,11 +8,11 @@ taxonB[c(1,2)]
 crop_filename23 <- suppressWarnings(file.path(taxon_path(taxonB, taxapath),
             paste0("preclusters", ".tif")))
 
-        if (taxonB$resist_model_type[[1]] == "Species") {
-          download_hdm(taxonB, taxapath, crop_filename)
-        } else {
-          use_generic_hdm(taxonB, taxapath, crop_filename)
-        }
+#        if (taxonB$resist_model_type[[1]] == "Species") {
+#          download_hdm(taxonB, taxapath, crop_filename)
+#        } else {
+#          use_generic_hdm(taxonB, taxapath, crop_filename)
+#        }
 
 
 

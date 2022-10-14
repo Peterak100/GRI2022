@@ -3,13 +3,12 @@
 # GeneticRiskIndex
 
 
-# October 2022: copied over from original GeneticRiskIndex repository..
+# October 2022: text copied over from original GeneticRiskIndex repository..
 
-This repository contains reproducible infrastructure and application scripts for calculating extinction risk index based on spatial separation of species,
-dispersal capacity, and landscape resistance processed with
-[Circuitscape.jl](https://github.com/Circuitscape/Circuitscape.jl). It is
-written primarily for species in Victoria, Australia using the ALA occurrence
-datasets.
+This repository contains reproducible infrastructure and application scripts for calculating a Genetic Risk Index (of extinction) based on spatial separation of species, estimated dispersal capacity, estimated overall population size, and landscape resistances processed with
+[Circuitscape.jl](https://github.com/Circuitscape/Circuitscape.jl).
+
+It is written primarily for species in Victoria, Australia using the ALA occurrence datasets.
 
 Terraform is used to build the required Amazon Web Services (AWS) Batch
 infrastructure to process hundreds/thousands of species. AWS containers are
@@ -26,8 +25,9 @@ Software needed to run these scripts locally:
 
 On linux and mac these can be installed with most package managers (e.g. brew,
 apt, pacman) and run from the command line. It is recommended these scripts are
-run from linux, either in a local machine, a virtual machine or on a server. The
-R and Julia scripts may be run from any machine as stand-alone scripts for
+run from linux, either in a local machine, a virtual machine or on a server.
+
+The R and Julia scripts may be run from any machine as stand-alone scripts for
 testing, without any AWS cloud components.
 
 Once terraform, docker and aws-cli are installed, clone or download this
@@ -45,8 +45,7 @@ The process of running these scripts is broken into a number of steps:
 
 4. Set up all AWS other infrastructure with terraform.
 
-5. Run prefiltering, circuitscape and postprocessing iteratively until all tasks
-are working and outputs make sense.
+5. Run prefiltering, circuitscape and postprocessing iteratively until all tasks are working and outputs make sense.
 
 6. Back up all data to the S3 bucket. This can also happen during step 2.
 
