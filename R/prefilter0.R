@@ -39,11 +39,10 @@ preclustered_isolation_taxa <- process_observations(isolation_taxa,
 end_time1 <- Sys.time()
 end_time1 - start_time1 # ~4.41 mins for first 30 taxon records
 
-## warnings should only be that dir.create() already exists
+## warnings that dir.create() already exists should now be suppressed
 
 
 ## WHAT DOES / WOULD 'throw_errors=TRUE' DO IN THE ABOVE FUNCTION?
-# 30 warnings that directory already exists - now suppressed?
 
 ## To examine first (10) rows of new dataframe..
 # head(preclustered_isolation_taxa[,c(1,2,39,43,94:102)], 10)
@@ -60,17 +59,14 @@ categorized_taxa <- rbind(preclustered_isolation_taxa, other_taxa) # sort?
 write_csv(categorized_taxa, file.path(groupingspath, "categorized_taxa.csv"))
 
 
-
 # Circuitscape/isolation by resistance output --------
 
 # Write csv for taxa that we need to process with Circuitscape
-isolation_by_resistance_taxa <- filter(preclustered_isolation_taxa,
+isolation_by_resistance_taxa <- dplyr::filter(preclustered_isolation_taxa,
           is.na(risk), filter_category == "isolation by resistance")
 
 write_csv(isolation_by_resistance_taxa, file.path(groupingspath,
           "isolation_by_resistance_taxa.csv"))
-
-
 
 # Write list of taxa to process in Circuitscape
 #  as a single column job-list text file
@@ -78,6 +74,7 @@ job_file <- file(file.path(datapath, "batch_jobs.txt"))
 underscored <- gsub(" ", "_", isolation_by_resistance_taxa$ala_search_term)
 writeLines(underscored, job_file)
 close(job_file)
+
 
 # Download and write raster files for Circuitscape resistance models
 prepare_resistance_files(isolation_by_resistance_taxa, taxapath)
