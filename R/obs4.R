@@ -190,9 +190,13 @@ buffer_orphans <- function(shapes, scaled_eps) {
 
 # Convert points to raster file matching mask_layer
 ### runs with previously buffered sf object
-## why print(shapes) & print(shapevect)? (was lines 2 & 4 of this function)
+### this function errors if mask_layer is not reset during current session
+###  because it is a non-exportable object?
+## why print(shapes) & print(shapevect)? (lines 2 & 4 of this function)
 shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
+  print(shapes)
   shapevect <- terra::vect(shapes)
+  print(shapevect)
   if (length(shapevect) > 0) {
     obs_raster <- terra::rasterize(shapevect, mask_layer,
                     field = "precluster")

@@ -3,7 +3,7 @@
 isolation_taxa[, c(1,2,39,43,94:97)]
 # test a single taxon (substitute row number for taxon to be tested)
 
-taxonA <- isolation_taxa[1, ]
+taxonA <- isolation_taxa[9, ]
 taxonA[c(1,2)]
 
   # Add new columns to single 'taxon' dataframe
@@ -66,9 +66,8 @@ pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |>
   dplyr::group_by(precluster) |> 
   summarize(pix_count = max(count, na.rm = TRUE),
             recent_year = max(year, na.rm = TRUE),
-            pix_confirm = min(count, na.rm = TRUE),
             latin = max(scientificName))|> 
-  add_column(pop_name = NA, pix_pc = 0, weight = 1, proximity = 0)
+  add_column(pop_name = NA, gen_diverse_weight = 0, proximity = 0)
 pclust_info31 <- add_column(pclust_info31,
             cluster = pclust_info31$precluster)
 # add count of observations per precluster
@@ -76,9 +75,6 @@ pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |>
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
 pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
-# calculate weighted average size (in pixels) for each precluster
-pclust_info31$pix_pc <- 
-  (pclust_info31$pix_count / sum(pclust_info31$pix_count))
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(pclust_info31)
 pclust_info31 <- cbind(pclust_info31, nearest)
@@ -89,6 +85,26 @@ for (i in 1:nrow(pclust_info31)) {
   pclust_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
     dplyr::slice(nearest[i]) |> as.numeric()/1000
 }
+
+# add columns for weighted size of precluster, epsilon proximity, and
+## effective (Victorian) population size (rounded to whole numbers)
+## Vic_popn_size should be == 0 if extinct in Vic or unknown
+pclust_info31 <- pclust_info31 |> 
+  mutate(pix_pc = (pix_count / sum(pix_count))) |>
+  mutate(eps_prox = proximity / taxonA$epsilon) |> 
+  mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
+pclust_info31$Ne_est <- round(pclust_info31$Ne_est, digits = 0)
+
+
+
+
+# add column for size of nearest cluster..
+for (i in 1:nrow(pclust_info31)) {
+  pclust_info31$size_nearest
+}
+
+
+
 # drop geometry & write as separate csv file for subsequent post processing
 pclust_info31 |> sf::st_drop_geometry() |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
