@@ -65,11 +65,18 @@ pclust_counts31 <- left_join(shapes31, pixel_freq31, copy = TRUE,
 pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
   summarize(pix_count = max(count, na.rm = TRUE),
-            recent_year = max(year, na.rm = TRUE),
-            latin = max(scientificName))|> 
-  add_column(pop_name = NA, gen_diverse_weight = 0, proximity = 0)
-pclust_info31 <- add_column(pclust_info31,
-            cluster = pclust_info31$precluster)
+        recent_year = max(year, na.rm = TRUE),
+        latin = max(scientificName)) |> 
+  add_column(cluster = pclust_info31$precluster, pop_name = NA,
+             gen_diversity_special = NA, pix_count_ignore = NA,
+             gen_diverse_weight = 0, proximity = 0)
+
+# manually update 'gen_diversity_special' column, then for any precluster
+## where 'gen_diversity_special' > 0; copy value of 'pix_count' column
+## to 'pix_count_ignore' column
+
+# code or function to calculate 'gen_diverse_weight'..
+
 # add count of observations per precluster
 pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
@@ -85,7 +92,6 @@ for (i in 1:nrow(pclust_info31)) {
   pclust_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
     dplyr::slice(nearest[i]) |> as.numeric()/1000
 }
-
 # add columns for weighted size of precluster, epsilon proximity, and
 ## effective (Victorian) population size (rounded to whole numbers)
 ## Vic_popn_size should be == 0 if extinct in Vic or unknown
@@ -95,15 +101,45 @@ pclust_info31 <- pclust_info31 |>
   mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
 pclust_info31$Ne_est <- round(pclust_info31$Ne_est, digits = 0)
 
+# add column for size of nearest precluster..
+## needs to utilize (index) number of nearest precluster
+## and pix_count relevant to that index number
+# for (i in 1:nrow(pclust_info31)) {
+#  pclust_info31$size_nearest
+#}
 
+# add risk score calculation columns
+pclust_info31 <- pclust_info31 |> add_column(gene_flow_factor = 0,
+        diversity_risk = 0, inbreed_risk = 0, cluster_risk_score = 0)
 
+# code to derive 'gene_flow_factor'
+# (i.e. a reduction in risk due to some occasional gene flow)
+## for 'isolation by resistance taxa':
+### base this on some range of resistance values just above cut-off threshold
+## for 'isolation by distance taxa':
+### if 'eps_prox' > 2.5, then = 0, else ('eps_prox'+1)^2.2
 
-# add column for size of nearest cluster..
+# code to derive diversity risk based on 'Ne_est' & 'gene_flow_factor'
 for (i in 1:nrow(pclust_info31)) {
-  pclust_info31$size_nearest
+  if(pclust_info31$Ne_est[i] < 1000) {
+    pclust_info31$diversity_risk[i] <-
+      (1-(pclust_info31$Ne_est[i]/1000))*100
+  }
+  else {
+    pclust_info31$diversity_risk[i] <- 0
+  }
 }
 
+# code to derive 'adj_div_risk' (COMBINE WITH ABOVE?)
+## 'raw_div_risk' * (1 - 'gene_flow_factor')
 
+# code to derive 'raw_inbreed_risk'
+## if 'Ne_est' < 110,
+##   if 'Ne_est' < 10, then = 2000, else = ((110 - 'Ne_est')^2)/5
+## else = 0
+
+# code to derive 'adj_inbreed_risk' (COMBINE WITH ABOVE?)
+## 'raw_inbreed_risk' * (1 - 'gene_flow_factor')
 
 # drop geometry & write as separate csv file for subsequent post processing
 pclust_info31 |> sf::st_drop_geometry() |> 
