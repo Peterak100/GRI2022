@@ -90,8 +90,8 @@ prox31 <- sf::st_distance(pclust_info31)
 ## update proximity column with nearest distance & convert to kms
 for (i in 1:nrow(pclust_info31)) {
   pclust_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
-    dplyr::slice(nearest[i]) |> as.numeric()/1000
-}
+    dplyr::slice(nearest[i]) |> as.numeric()/1000}
+
 # add columns for weighted size of precluster, epsilon proximity, and
 ## effective (Victorian) population size (rounded to whole numbers)
 ## Vic_popn_size should be == 0 if extinct in Vic or unknown
@@ -100,38 +100,37 @@ pclust_info31 <- pclust_info31 |>
   mutate(eps_prox = proximity / taxonA$epsilon) |> 
   mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
 pclust_info31$Ne_est <- round(pclust_info31$Ne_est, digits = 0)
-
-# add column for size of nearest precluster..
-## needs to utilize (index) number of nearest precluster
-## and pix_count relevant to that index number
-# for (i in 1:nrow(pclust_info31)) {
-#  pclust_info31$size_nearest
-#}
-
 # add risk score calculation columns
-pclust_info31 <- pclust_info31 |> add_column(gene_flow_factor = 0,
-        diversity_risk = 0, inbreed_risk = 0, cluster_risk_score = 0)
-
+pclust_info31 <- pclust_info31 |> add_column(size_nearest = 0,
+        gene_flow_factor = 0, diversity_risk = 0, inbreed_risk = 0,
+        cluster_risk_score = 0)
+# derive size of nearest precluster..
+for (i in 1:nrow(pclust_info31)){
+  pclust_info31$size_nearest[i] <- dplyr::slice(pclust_info31,
+      pclust_info31$nearest[i]) |> 
+    dplyr::select(pix_count) |> sf::st_drop_geometry()}
 # code to derive 'gene_flow_factor'
-# (i.e. a reduction in risk due to some occasional gene flow)
-## for 'isolation by resistance taxa':
-### base this on some range of resistance values just above cut-off threshold
-## for 'isolation by distance taxa':
-### if 'eps_prox' > 2.5, then = 0, else ('eps_prox'+1)^2.2
-
+for (i in 1:nrow(pclust_info31)){
+  if(pclust_info31$eps_prox[i] > 2.6){
+    pclust_info31$gene_flow_factor[i] <- 0
+  }
+  else {
+    pclust_info31$gene_flow_factor[i] <- 
+      1/((pclust_info31$eps_prox[i]+1)^2.2)
+  }
+}
 # code to derive diversity risk based on 'Ne_est' & 'gene_flow_factor'
+## WHAT IF NEAREST PRECLUSTER IS LARGE (OR SMALL)?
 for (i in 1:nrow(pclust_info31)) {
   if(pclust_info31$Ne_est[i] < 1000) {
-    pclust_info31$diversity_risk[i] <-
-      (1-(pclust_info31$Ne_est[i]/1000))*100
+    (pclust_info31$diversity_risk[i] <-
+      (1-(pclust_info31$Ne_est[i]/1000)) * 100) *
+      (1-pclust_info31$gene_flow_factor[i])
   }
   else {
     pclust_info31$diversity_risk[i] <- 0
   }
 }
-
-# code to derive 'adj_div_risk' (COMBINE WITH ABOVE?)
-## 'raw_div_risk' * (1 - 'gene_flow_factor')
 
 # code to derive 'raw_inbreed_risk'
 ## if 'Ne_est' < 110,
