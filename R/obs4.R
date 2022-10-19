@@ -278,36 +278,17 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
             by = c("precluster" = "value")) |> 
     write_csv(file.path(taxonpath, paste0(gsub(" ","_", taxon$ala_search_term),
             "_precluster_counts", ".csv")))
-  # also save an info file with most recent year, pixel count, weighted avg,
-  ## next nearest polygon, and proximity (distance) to it for each precluster
-  ### use terra::summarize() ?
+  
+  # also save an info file with most recent year, pixel count & latin name
+  ## need to retrieve this for post-processing
   pclust_info <- dplyr::filter(pclust_counts, precluster != 0) |> 
     dplyr::group_by(precluster) |> 
     summarize(pix_count = max(count, na.rm = TRUE),
               recent_year = max(year, na.rm = TRUE),
-              pix_confirm = min(count, na.rm = TRUE),
-              latin = max(scientificName))|> 
-    add_column(pop_name = NA, pix_pc = 0, weight = 1, proximity = 0)
-  pclust_info <- add_column(pclust_info,
-              cluster = pclust_info$precluster)
-  # add count of observations per precluster
-  pclust_recs <- dplyr::filter(pclust_counts, precluster !=0) |> 
-    dplyr::count(precluster) |> sf::st_drop_geometry() |> 
-    dplyr::rename(num_obs = n)
-  pclust_info <- left_join(pclust_info, pclust_recs, by = "precluster")
-  # calculate weighted average size (in pixels) for each precluster
-  pclust_info$pix_pc <- 
-    (pclust_info$pix_count / sum(pclust_info$pix_count))
-  # add another column for which is the nearest polygon
-  nearest <- sf::st_nearest_feature(pclust_info)
-  pclust_info <- cbind(pclust_info, nearest)
-  # create a 'units' matrix of distances between polygons
-  prox <- sf::st_distance(pclust_info)
-  ## update proximity column with nearest distance & convert to kms
-  for (i in 1:nrow(pclust_info)) {
-    pclust_info$proximity[i] <- as.data.frame(prox[,i]) |> 
-      dplyr::slice(nearest[i]) |> as.numeric()/1000
-  }
+              latin = max(scientificName)) |> 
+    add_column(cluster = pclust_info$precluster, pop_name = NA,
+               gene_div_special = 0, pix_ignore = 0, Ne_override = 0,
+               gene_div_weight = 0, proximity = 0)
   # drop geometry & write as separate csv file for subsequent post processing
   pclust_info |> sf::st_drop_geometry() |> 
     write_csv(file.path(taxonpath, paste0(gsub(" ","_",
