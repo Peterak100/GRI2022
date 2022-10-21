@@ -37,10 +37,20 @@ for (i in 1:nrow(pwise1)) {
 
 ## Post-processing in R --------
 
-# next need to summarize for each cluster - using dplyr::groupby()?
+# for 'isolation by distance' taxa: post-processing steps should be ok
+# for 'isolation by resistance' taxa:
+# next need to summarize for each cluster - using dplyr::group_by()?
 ## sum(pix_count), max(recent_year), max(latin)
+###  NEED TO GROUP THE geometry ?? OKAY TO BECOME DISCONTINUOUS SHAPES?
+###   dplyr::summarize(geometry = st_union(geometry))
+###  run circuitscape again (in all-to-one mode?) 
+###  to get new relative resistances?
+# https://gis.stackexchange.com/questions/316181/how-do-i-combine-geometries-in-a-shapefile-based-on-a-grouping-variable
 
+### NEED TO PERFORM ALL STEPS THAT RELY ON geometry FIRST,
+###  THEN DO st_drop_geometry?
 
+mtcars |> group_by(cyl) |> summarize(cyl_sum = sum(cyl), mpg = max(mpg))
 
 
 ## TURN ALL THIS INTO A FUNCTION?
