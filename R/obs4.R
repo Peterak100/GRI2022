@@ -286,24 +286,23 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     summarize(pix_count = max(count, na.rm = TRUE),
               recent_year = max(year, na.rm = TRUE),
               latin = max(scientificName)) |> 
-    add_column(cluster = pclust_info$precluster, pop_name = NA,
-               gene_div_special = 0, pix_ignore = 0, Ne_override = 0,
-               gene_div_weight = 0, proximity = 0)
+    add_column(cluster = pclust_info$precluster, pop_name = NA)
   
   # create a 'units' matrix of distances between polygons
   # then convert to normal numeric matrix & convert to kilometres
   prox <- sf::st_distance(pclust_info) |> as.data.frame() |> 
     as.matrix()/1000
-  # add two rows and save for use as mask_file in Circuitscape
-  mask <- prox[1:2,]
-  mask[1:2,] <- "" # or NA ?
-  mask[1,1] <- "min"
-  mask[1,2] <- 0
-  mask[2,1] <- "max"
-  mask[2,2] <- taxonA$epsilon * 40
-  mask <- rbind(mask, prox)
+  # add two rows and save for use as mask_file in Circuitscape?
+  # Not sure this even works, or is particularly useful
+  # mask <- prox[1:2,]
+  # mask[1:2,] <- "" # or NA ?
+  # mask[1,1] <- "min"
+  # mask[1,2] <- 0
+  # mask[2,1] <- "max"
+  # mask[2,2] <- taxonA$epsilon * 40
+  # mask <- rbind(mask, prox)
   ## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath) & FILE NAME
-  write.table(mask, "mask.txt", row.names = FALSE, col.names = FALSE)
+  # write.table(mask, "mask.txt", row.names = FALSE, col.names = FALSE)
 
   # drop geometry & write as separate csv file for subsequent post processing
   pclust_info |> sf::st_drop_geometry() |> 
@@ -337,16 +336,10 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   # Crop and write rasters as .tif files to relevant taxon folder
   precluster_filename <- file.path(taxonpath, paste0("preclusters", ".tif"))
   orphan_filename <- file.path(taxonpath, paste0("orphans", ".tif"))
-  short_circuit_filename <- file.path(taxonpath,
-        paste0("short_circuit", ".tif"))
   terra::crop(precluster_rast, crop_rast,
        filename = precluster_filename, overwrite = TRUE)
   terra::crop(orphan_rast, crop_rast,
        filename = orphan_filename, overwrite = TRUE)
-  # Make a short circuit file in addition to orphans
-  #  as the short circuit may be altered later
-  terra::crop(orphan_rast, crop_rast,
-        filename = short_circuit_filename, overwrite = TRUE)
   
   precluster_cellcount <- sum(terra::freq(precluster_rast))
   orphan_cellcount <- sum(terra::freq(orphan_rast)) # sum makes this numeric
