@@ -71,6 +71,22 @@ pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |>
              gene_div_weight = 0, proximity = 0)
 
 
+# create a 'units' matrix of distances between polygons
+# then convert to normal numeric matrix & convert to kilometres
+prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> 
+  as.matrix()/1000
+# add two rows and save for use as mask_file in Circuitscape
+mask31 <- prox31[1:2,]
+mask31[1:2,] <- "" # or NA ?
+mask31[1,1] <- "min"
+mask31[1,2] <- 0
+mask31[2,1] <- "max"
+mask31[2,2] <- taxonA$epsilon * 40 # IS 40 A GOOD VALUE HERE?
+mask31 <- rbind(mask31, prox31)
+## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath)
+write.table(mask31, "mask.txt", row.names = FALSE, col.names = FALSE)
+
+
 ## THIS SHOULD ALL BE IN POST PROCESSING --------
 # i.e. derive which preclusters to group into clusters first
 # based on relative resistances calculated with Circuitscape
@@ -111,12 +127,11 @@ pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(pclust_info31)
 pclust_info31 <- cbind(pclust_info31, nearest)
-# create a 'units' matrix of distances between polygons
-prox31 <- sf::st_distance(pclust_info31)
-## update proximity column with nearest distance & convert to kms
+
+## update proximity column with nearest distance
 for (i in 1:nrow(pclust_info31)) {
-  pclust_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
-    dplyr::slice(nearest[i]) |> as.numeric()/1000
+  pclust_info31$proximity[i] <- prox31[,i] |> 
+    dplyr::slice(nearest[i])
 }
 
 # add columns for weighted size of precluster, epsilon proximity, and

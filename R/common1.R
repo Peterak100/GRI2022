@@ -10,6 +10,7 @@ library(fs)
 library(tidyverse)
 library(RcppTOML)
 library(terra)
+library(igraph)
 
 ## this needs to be set each session:
 galah_config(email = "peterkriesner@yahoo.com", download_reason_id = 0,
