@@ -65,14 +65,24 @@ pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |>
   dplyr::group_by(precluster) |> 
   dplyr::summarise(pix_count = max(count, na.rm = TRUE),
         recent_year = max(year, na.rm = TRUE), latin = max(scientificName)) |> 
-  add_column(cluster = pclust_info31$precluster)
+  add_column(cluster = pclust_info31$precluster) # 6 columns
 
+# add count of observations per precluster
+pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
+  dplyr::count(precluster) |> sf::st_drop_geometry() |> 
+  dplyr::rename(num_obs = n)
+pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
+
+# FIX THIS: NEED TO RETAIN geometry AND SAVE AS VARIABLE INSTEAD
+# drop geometry & write as separate csv file for subsequent post processing
+pclust_info |> sf::st_drop_geometry() |> 
+  write_csv(file.path(taxonpath, paste0(gsub(" ","_",
+  taxon$ala_search_term), "_precluster_info", ".csv")))
 
 # create a 'units' matrix of distances between polygons
 # then convert to normal numeric matrix & convert to kilometres
-prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> 
-  as.matrix()/1000
-
+prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> as.matrix()
+prox31 <- prox31/1000
 # add two rows and save for use as mask_file in Circuitscape?
 ## not sure this either works, or is particularly useful
 # mask31 <- prox31[1:2,]
@@ -85,140 +95,6 @@ prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |>
 ## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath)
 # write.table(mask31, "mask.txt", row.names = FALSE, col.names = FALSE)
 
-
-## THIS SHOULD ALL BE IN POST PROCESSING --------
-# i.e. derive which preclusters to group into clusters first
-# based on relative resistances calculated with Circuitscape
-## MAKE A NEW dataframe of clusters FOR EACH TAXON??
-## WILL NEED sum(pix_count), max(recent_year), max(latin) for each CLUSTER
-## e.g. use dplyr::groupby()
-
-# manually update 'pop_name','gene_div_special' & 'Ne_override' columns;
-# e.g. pclust_info31$pop_name[7] <- "Gibbo"
-# e.g. pclust_info31$gene_div_special[7] <- 0.35
-# e.g. pclust_info31$Ne_override[7] <- 300
-
-## then for any clusters where 'gene_div_special' > 0; 
-## copy value of 'pix_count' column to 'pix_ignore' column
-for (i in 1:nrow(pclust_info31)) {
-  if(pclust_info31$gene_div_special[i] > 0) {
-    pclust_info31$pix_ignore[i] <- pclust_info31$pix_count[i]
-  }
-}
-
-# code or function to calculate 'gen_diverse_weight'..
-for (i in 1:nrow(pclust_info31)) {
-  if(pclust_info31$gene_div_special[i] != 0) {
-    pclust_info31$gene_div_weight[i] <- pclust_info31$gene_div_special[i]
-  }
-  else {
-    pclust_info31$gene_div_weight[i] <-
-      pclust_info31$pix_count[i] / (sum(pclust_info31$pix_count) - 
-        sum(pclust_info31$pix_ignore))*(1-sum(pclust_info31$gene_div_special))
-  }
-}
-
-# add count of observations per precluster
-pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
-  dplyr::count(precluster) |> sf::st_drop_geometry() |> 
-  dplyr::rename(num_obs = n)
-pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
-# add another column for which is the nearest polygon
-nearest <- sf::st_nearest_feature(pclust_info31)
-pclust_info31 <- cbind(pclust_info31, nearest)
-
-## update proximity column with nearest distance
-for (i in 1:nrow(pclust_info31)) {
-  pclust_info31$proximity[i] <- prox31[,i] |> 
-    dplyr::slice(nearest[i])
-}
-
-# add columns for weighted size of precluster, epsilon proximity, and
-## effective (Victorian) population size (rounded to whole numbers)
-## Vic_popn_size should be == 0 if extinct in Vic or unknown
-pclust_info31 <- pclust_info31 |> 
-  mutate(pix_pc = (pix_count / sum(pix_count))) |>
-  mutate(eps_prox = proximity / taxonA$epsilon) |> 
-  mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
-pclust_info31$Ne_est <- round(pclust_info31$Ne_est, digits = 0)
-
-# update with Ne values manually entered for particular populations
-for (i in 1:nrow(pclust_info31)) {
-  if(pclust_info31$Ne_override[i] != 0) {
-    pclust_info31$Ne_est[i] <- pclust_info31$Ne_override[i]
-  }
-}
-
-# add risk score calculation columns
-pclust_info31 <- pclust_info31 |> add_column(size_nearest = 0,
-        gene_flow_factor = 0, div_risk = 0, inbreed_risk = 0,
-        cluster_score = 0) # should now be 22 columns
-# derive size of nearest precluster..
-for (i in 1:nrow(pclust_info31)){
-  pclust_info31$size_nearest[i] <- dplyr::slice(pclust_info31,
-      pclust_info31$nearest[i]) |> 
-    dplyr::select(pix_count) |> sf::st_drop_geometry()
-}
-
-# derive 'gene_flow_factor'
-## NEED DIFFERENT CODE FOR 'isolation by resistance' TAXA
-## A (linear?) FUNCTION OF LANDSCAPE RESISTANCE COMPUTED BY CIRCUITSCAPE
-## e.g. below LSCAPE_RES_MIN; not applicable (connect relevant preclusters)
-##  above LSCAPE_RES_MAX; = 0 (negligible effective gene flow)
-### To do: MOVE 2.6 and 2.2 INTO config.toml file
-for (i in 1:nrow(pclust_info31)){
-  if(pclust_info31$eps_prox[i] > 2.6){
-    pclust_info31$gene_flow_factor[i] <- 0
-  }
-  else {
-    pclust_info31$gene_flow_factor[i] <- 
-      1/((pclust_info31$eps_prox[i]+1)^2.2)
-  }
-}
-# code to derive diversity risk based on 'Ne_est' & 'gene_flow_factor'
-## WHAT IF NEAREST PRECLUSTER IS LARGE (OR SMALL)?
-### To do: MOVE 1000 INTO config.toml file
-for (i in 1:nrow(pclust_info31)) {
-  if(pclust_info31$Ne_est[i] < 1000) {
-    (pclust_info31$div_risk[i] <-
-      (1 - (pclust_info31$Ne_est[i]/1000)) * 100) *
-      (1 - pclust_info31$gene_flow_factor[i])
-  }
-  else {
-    pclust_info31$div_risk[i] <- 0
-  }
-}
-
-# derive 'adj_inbreed_risk'
-### To do: MOVE 110 INTO config.toml file
-for (i in 1:nrow(pclust_info31)) {
-  if(pclust_info31$Ne_est[i] < 110) {
-    if(pclust_info31$Ne_est[i] < 10) {
-      pclust_info31$inbreed_risk[i] <-
-        (2000 * (1 - pclust_info31$gene_flow_factor[i]))
-    }
-    else {
-      pclust_info31$inbreed_risk[i] <-
-        ((110-pclust_info31$Ne_est[i])^2)/5 *
-        (1-pclust_info31$gene_flow_factor[i])
-    }
-  }
-  else {
-    pclust_info31$inbreed_risk[i] <- 0
-  }
-}
-
-# code to derive 'cluster_score'
-for (i in 1:nrow(pclust_info31)) {
-  pclust_info31$cluster_score[i] <-
-    (pclust_info31$div_risk[i] + pclust_info31$inbreed_risk[i]) *
-    pclust_info31$gene_div_weight[i]
-}
-# fragmented risk for a given taxon will be sum(pclust_info31$cluster_score)
-
-
-
-## RESUME FUNCTION --------
 
 # drop geometry & write as separate csv file for subsequent post processing
 pclust_info31 |> sf::st_drop_geometry() |> 
@@ -256,11 +132,6 @@ precluster_cellcount31 <- sum(terra::freq(precluster_rast31))
 orphan_cellcount31 <- sum(terra::freq(orphan_rast31)) # sum makes it numeric
 # this is returned as cell_counts in try_taxon_observations()
 output31 <- (c(precluster_cellcount31, orphan_cellcount31))
-
-# simply for checking..
-zz31 <- terra::freq(precluster_rast31)
-zy31 <- terra::freq(orphan_rast31) ## differs by 1 due to rounding error??
-
 
 # taxon$filter_category <- taxon$filter_category ## redundant?
 taxonA$num_preclusters <- max(test79$precluster)
