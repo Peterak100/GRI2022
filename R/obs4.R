@@ -288,6 +288,12 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
               latin = max(scientificName)) |> 
     add_column(cluster = pclust_info$precluster, pop_name = NA)
   
+  # add count of observations per precluster
+  pclust_recs <- dplyr::filter(pclust_counts, precluster !=0) |> 
+    dplyr::count(precluster) |> sf::st_drop_geometry() |> 
+    dplyr::rename(num_obs = n)
+  pclust_info <- left_join(pclust_info, pclust_recs, by = "precluster")
+  
   # create a 'units' matrix of distances between polygons
   # then convert to normal numeric matrix & convert to kilometres
   prox <- sf::st_distance(pclust_info) |> as.data.frame() |> 

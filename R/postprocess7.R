@@ -84,13 +84,16 @@ pwise3 <- rbind(pwise3, flip) |> dplyr::group_by(cluster) |>
 # add new columns, to be filled or updated subsequently
 pclust_info31 <- pclust_info31 |> add_column(pop_name = NA,
           gene_div_special = 0, pix_ignore = 0, Ne_override = 0,
-          gene_div_weight = 0, proximity = 0) # 12 columns
+          gene_div_weight = 0, proximity = 0) # 13 columns
 
 ## Manually update populations for 'isolation by distance' taxa --------
 
-# manually update 'pop_name','gene_div_special' & 'Ne_override' columns;
-### TO DO: Put these in a supplementary file and update if the file exist?
+### TO DO: Put these in a supplementary file (if and when estimates available)
+###  and update with those estimate values if the supplementary file exists?
 ### NEED TO KNOW WHICH POPULATION IS WHICH PRECLUSTER FIRST
+### check that nrow() is == for both files?
+
+# manually update 'pop_name','gene_div_special' & 'Ne_override' columns;
 # e.g. pclust_info31$pop_name[7] <- "Gibbo"
 # e.g. pclust_info31$gene_div_special[7] <- 0.35
 # e.g. pclust_info31$Ne_override[7] <- 300
@@ -115,11 +118,6 @@ for (i in 1:nrow(pclust_info31)) {
   }
 }
 
-# add count of observations per precluster
-pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
-  dplyr::count(precluster) |> sf::st_drop_geometry() |> 
-  dplyr::rename(num_obs = n)
-pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(pclust_info31)
 pclust_info31 <- cbind(pclust_info31, nearest) # 14 columns
@@ -215,25 +213,44 @@ for (i in 1:nrow(pclust_info31)) {
 ##  AND THEN ANOTHER NEW COLUMN FOR THE FINAL RISK SCORE AFTER ADJUSTING 
 ##  FOR VARIOUS OTHER FACTORS
 
+# write preclusters with derived risk scores to a file
+pclust_info |> sf::st_drop_geometry() |> 
+  write_csv(file.path(taxonpath, paste0(gsub(" ","_",
+  taxon$ala_search_term), "_preclusters_info", ".csv")))
 
 ## 'isolation by resistance' Post-processing in R --------
 
 ## if taxonA$filter_category == "isolation by resistance"
+
+# start with 7 column version of preclusters info file
+## retrieve a saved version?
+
+# update the cluster number based on initial Circuitscape processing
+for (i in 1:nrow(pwise1)) {
+  pclust_info31$cluster[i] <- which(lapply(fcluster1,
+      function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
+}
+# create summary table based on cluster number
 clusters_info31 <- pclust_info31 |> dplyr::group_by(cluster) |> 
-  dplyr::summarize(pix_count = sum(pix_count), recent_year = max(recent_year),
-        latin = max(latin), geometry = sf::st_union(geometry)) 
+  dplyr::summarize(pix_count = sum(pix_count), num_obs = sum(num_obs),
+        recent_year = max(recent_year),
+        latin = max(latin), geometry = sf::st_union(geometry))
 # add new columns, including for next nearest cluster by resistance
 clusters_info31 <- clusters_info31 |> add_column(pop_name = NA,
         gene_div_special = 0, pix_ignore = 0, Ne_override = 0,
-        gene_div_weight = 0, proximity = 0, lowest_resist = NA)
+        gene_div_weight = 0, lowest_resist = NA)
 
-## TO FIX: update lowest_resist column with next lowest resistance
+# update lowest_resist column with next lowest resistance
 for (i in 1:nrow(clusters_info31)) {
-  clusters_info31$lowest_resist[i] <- prox31[,i] |> 
-    dplyr::slice(nearest[i])
+  clusters_info31$lowest_resist[i] <- pwise3$resistance[i]
 }
 
 ## Manually update populations for 'isolation by resistance' taxa --------
+
+### TO DO: Put these in a supplementary file (if and when estimates available)
+###  and update with those estimate values if the supplementary file exists?
+### NEED TO KNOW WHICH POPULATION IS WHICH PRECLUSTER FIRST
+### check that nrow() is == for both files?
 
 # manually update 'pop_name','gene_div_special' & 'Ne_override' columns;
 # e.g. clusters_info31$pop_name[4] <- "Gibbo"
@@ -260,11 +277,13 @@ for (i in 1:nrow(clusters_info31)) {
   }
 }
 
+## FIX THIS
 # add count of observations per cluster
 pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
   dplyr::count(cluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
-clusters_info31 <- left_join(clusters_info31, pclust_recs31, by = "cluster")
+clusters_info32 <- left_join(clusters_info31, pclust_recs31, by = "cluster")
+
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(clusters_info31)
 clusters_info31 <- cbind(clusters_info31, nearest)
