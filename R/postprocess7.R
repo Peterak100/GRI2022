@@ -58,9 +58,14 @@ terra::crop(obs_retest_rast31, crop_rast31,
 
 
 ## import second Circuitscape output matrix --------
-pwise3 <- read.table("cryo2_resistances.out",header=TRUE,
-            sep = " ", row.names = 1, check.names = FALSE)
-colnames(pwise3) <- rownames(pwise3)
+pwise3 <- read.table("cryo2_res3cols.out", header = FALSE,
+      sep = " ", col.names = c("cluster", "closest", "resistance"),
+      check.names = FALSE)
+# transform to find which is the next nearest cluster by resistance
+flip <- as.data.frame(cbind(pwise3[,2], pwise3[,1], pwise3[,3]))
+names(flip)<-names(pwise3)
+pwise3 <- rbind(pwise3, flip) |> dplyr::group_by(cluster) |> 
+  dplyr::slice(which.min(resistance)) # returns only the 1st minima
 
 
 ## 'isolation by distance' Post-processing in R --------
@@ -84,6 +89,8 @@ pclust_info31 <- pclust_info31 |> add_column(pop_name = NA,
 ## Manually update populations for 'isolation by distance' taxa --------
 
 # manually update 'pop_name','gene_div_special' & 'Ne_override' columns;
+### TO DO: Put these in a supplementary file and update if the file exist?
+### NEED TO KNOW WHICH POPULATION IS WHICH PRECLUSTER FIRST
 # e.g. pclust_info31$pop_name[7] <- "Gibbo"
 # e.g. pclust_info31$gene_div_special[7] <- 0.35
 # e.g. pclust_info31$Ne_override[7] <- 300
@@ -103,8 +110,8 @@ for (i in 1:nrow(pclust_info31)) {
   }
   else {
     pclust_info31$gene_div_weight[i] <-
-      pclust_info31$pix_count[i] / (sum(pclust_info31$pix_count) - 
-        sum(pclust_info31$pix_ignore))*(1-sum(pclust_info31$gene_div_special))
+    pclust_info31$pix_count[i] / (sum(pclust_info31$pix_count) - 
+    sum(pclust_info31$pix_ignore))*(1-sum(pclust_info31$gene_div_special))
   }
 }
 
@@ -115,13 +122,16 @@ pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |>
 pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(pclust_info31)
-pclust_info31 <- cbind(pclust_info31, nearest)
+pclust_info31 <- cbind(pclust_info31, nearest) # 14 columns
 
 ## update proximity column with nearest distance
+# slice needs to operate on a data frame
 for (i in 1:nrow(pclust_info31)) {
-  pclust_info31$proximity[i] <- prox31[,i] |> 
+  pclust_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
     dplyr::slice(nearest[i])
 }
+# The above makes $proximity a list. Need to convert back to numeric
+pclust_info31$proximity <- as.numeric(pclust_info31$proximity)
 
 # add columns for weighted size of precluster, epsilon proximity, and
 ## effective (Victorian) population size (rounded to whole numbers)
@@ -151,10 +161,6 @@ for (i in 1:nrow(pclust_info31)){
 }
 
 # derive 'gene_flow_factor'
-## NEED DIFFERENT CODE FOR 'isolation by resistance' TAXA
-## A (linear?) FUNCTION OF LANDSCAPE RESISTANCE COMPUTED BY CIRCUITSCAPE
-## e.g. below LSCAPE_RES_MIN; not applicable (connect relevant preclusters)
-##  above LSCAPE_RES_MAX; = 0 (negligible effective gene flow)
 ### To do: MOVE 2.6 and 2.2 INTO config.toml file
 for (i in 1:nrow(pclust_info31)){
   if(pclust_info31$eps_prox[i] > 2.6){
@@ -208,6 +214,7 @@ for (i in 1:nrow(pclust_info31)) {
 ## DATA BASE WILL NEED A NEW COLUMN FOR THIS,
 ##  AND THEN ANOTHER NEW COLUMN FOR THE FINAL RISK SCORE AFTER ADJUSTING 
 ##  FOR VARIOUS OTHER FACTORS
+
 
 ## 'isolation by resistance' Post-processing in R --------
 
@@ -264,7 +271,7 @@ clusters_info31 <- cbind(clusters_info31, nearest)
 
 ## update proximity column with nearest distance
 for (i in 1:nrow(clusters_info31)) {
-  clusters_info31$proximity[i] <- prox31[,i] |> 
+  clusters_info31$proximity[i] <- as.data.frame(prox31[,i]) |> 
     dplyr::slice(nearest[i])
 }
 
