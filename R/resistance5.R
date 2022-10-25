@@ -38,8 +38,27 @@ prepare_resistance_files <- function(taxa, taxapath) {
             paste0("preclusters", ".tif")))
     if (file.exists(crop_filename)) {
       use_generic_hdm(taxon, taxapath, crop_filename)
+      # read in a vanilla version of the Circuitscape.ini file with standard
+      # settings for a Circuitscape pairwise run
+      Cscape1path <- file.path(datapath, paste0("circuitscape_pwise.ini"))
+      CSrun <- read.ini(Cscape1path, encoding = getOption("encoding"))
+      # produces a list of 11
+      # update the .ini file with source files relevant to the particular taxon:
+      CSrun$`Habitat raster or graph`$habitat_file <- 
+        file.path(taxonpath, paste0("resistance.tif"))
+      CSrun$`Options for pairwise and one-to-all and all-to-one modes`$point_file <-
+        file.path(taxonpath, paste0("preclusters31.tif"))
+      CSrun$`Output options`$output_file <-
+        file.path(taxonpath, paste0("CSpwise1"))
+      # save as a customized .ini file in the relevant directory
+      write.ini(CSrun, file.path(taxonpath,
+            paste0("Circuitscape_custom1.ini")),
+            encoding = getOption("encoding"))
     }
   }
   return()
 }
+
+
+
 

@@ -3,7 +3,7 @@
 isolation_taxa[, c(1,2,39,43,94:97)]
 # test a single taxon (substitute row number for taxon to be tested)
 
-taxonA <- isolation_taxa[9, ]
+taxonA <- isolation_taxa[18, ]
 taxonA[c(1,2)]
 
   # Add new columns to single 'taxon' dataframe
@@ -54,6 +54,7 @@ plot(precluster_rast31, main = paste(taxonA$ala_search_term, "preclusters31"))
 while (!is.null(dev.list())) dev.off()
 
 pixel_freq31 <- terra::freq(precluster_rast31)
+# pixel_freq31 should have pixel frequencies for each precluster
 pclust_counts31 <- left_join(shapes31, pixel_freq31, copy = TRUE,
       by = c("precluster" = "value")) |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
@@ -64,7 +65,8 @@ pclust_counts31 <- left_join(shapes31, pixel_freq31, copy = TRUE,
 pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
   dplyr::summarise(pix_count = max(count, na.rm = TRUE),
-        recent_year = max(year, na.rm = TRUE), latin = max(scientificName)) |> 
+        recent_year = max(year, na.rm = TRUE), latin = max(scientificName))
+pclust_info31 <- pclust_info31 |> 
   add_column(cluster = pclust_info31$precluster) # 6 columns
 
 # add count of observations per precluster
@@ -72,17 +74,18 @@ pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |>
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
 pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
+# 7 columns
 
-# FIX THIS: NEED TO RETAIN geometry AND SAVE AS VARIABLE INSTEAD
-# drop geometry & write as separate csv file for subsequent post processing
-pclust_info |> sf::st_drop_geometry() |> 
-  write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-  taxon$ala_search_term), "_precluster_info", ".csv")))
+# save a .csv file to retrieve for postprocessing
+pclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
+          taxonA$ala_search_term), "_preclusters_prelim", ".csv")))
+
 
 # create a 'units' matrix of distances between polygons
 # then convert to normal numeric matrix & convert to kilometres
 prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> as.matrix()
 prox31 <- prox31/1000
+
 # add two rows and save for use as mask_file in Circuitscape?
 ## not sure this either works, or is particularly useful
 # mask31 <- prox31[1:2,]
@@ -94,12 +97,6 @@ prox31 <- prox31/1000
 # mask31 <- rbind(mask31, prox31)
 ## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath)
 # write.table(mask31, "mask.txt", row.names = FALSE, col.names = FALSE)
-
-
-# drop geometry & write as separate csv file for subsequent post processing
-pclust_info31 |> sf::st_drop_geometry() |> 
-  write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-        taxonA$ala_search_term), "_precluster_info31", ".csv")))
 
 orphan_obs31 <- buffer_orphans(shapes31, scaled_eps31)
 orphan_rast31 <- shapes_to_raster(orphan_obs31, taxon, mask_layer, taxonpath)
@@ -119,14 +116,10 @@ crop_rast31 <- terra::merge(precluster_rast31, orphan_rast31) |>
 ## crop and write rasters as .tif files
 precluster_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
 orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
-short_circuit_filename <- file.path(taxonpath,
-            paste0("short_circuit31", ".tif"))
 terra::crop(precluster_rast31, crop_rast31,
             filename = precluster_filename, overwrite = TRUE)
 terra::crop(orphan_rast31, crop_rast31,
             filename = orphan_filename, overwrite = TRUE)
-terra::crop(orphan_rast31, crop_rast31,
-            filename = short_circuit_filename, overwrite = TRUE)
 
 precluster_cellcount31 <- sum(terra::freq(precluster_rast31))
 orphan_cellcount31 <- sum(terra::freq(orphan_rast31)) # sum makes it numeric
@@ -148,12 +141,13 @@ taxonB$orphan_cellcount <- 0
 taxon_processed79 <- label_by_clusters(taxonA)
 taxon_processed79[c(1,2,94:102)]
 
-# as above, but broken down by individual label function..
-taxon_processed79 <- label_high_orphan_area(taxonA)
-taxon_processed79 <- label_many_clusters(taxon_processed79)
-taxon_processed79 <- label_few_clusters(taxon_processed79)
-taxon_processed79 <- label_no_clusters(taxon_processed79)
 
+# as above, but broken down by individual label function..
+## if further testing is needed
+# taxon_processed79 <- label_high_orphan_area(taxonA)
+# taxon_processed79 <- label_many_clusters(taxon_processed79)
+# taxon_processed79 <- label_few_clusters(taxon_processed79)
+# taxon_processed79 <- label_no_clusters(taxon_processed79)
 
 
 

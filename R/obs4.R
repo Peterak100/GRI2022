@@ -285,7 +285,9 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     dplyr::group_by(precluster) |> 
     summarize(pix_count = max(count, na.rm = TRUE),
               recent_year = max(year, na.rm = TRUE),
-              latin = max(scientificName)) |> 
+              latin = max(scientificName))
+  # add new column for cluster number 
+  pclust_info <- pclust_info |> 
     add_column(cluster = pclust_info$precluster, pop_name = NA)
   
   # add count of observations per precluster
@@ -310,10 +312,9 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   ## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath) & FILE NAME
   # write.table(mask, "mask.txt", row.names = FALSE, col.names = FALSE)
 
-  # drop geometry & write as separate csv file for subsequent post processing
-  pclust_info |> sf::st_drop_geometry() |> 
-    write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-      taxon$ala_search_term), "_precluster_info", ".csv"))) 
+  # write as a separate csv file for subsequent post processing
+  pclust_info |> write_csv(file.path(taxonpath, paste0(gsub(" ","_",
+      taxon$ala_search_term), "_preclusters_prelim", ".csv"))) 
   
   # Create a dataframe and raster for orphans
   orphan_obs <- buffer_orphans(shapes, scaled_eps)
@@ -350,6 +351,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   precluster_cellcount <- sum(terra::freq(precluster_rast))
   orphan_cellcount <- sum(terra::freq(orphan_rast)) # sum makes this numeric
   # this is returned as cell_counts in try_taxon_observations()
+  ## ALSO NEED TO RETURN pclust_info FOR POST-PROCESSING
   return(c(precluster_cellcount, orphan_cellcount))
 }
 

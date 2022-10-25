@@ -61,10 +61,14 @@ write_csv(categorized_taxa, file.path(groupingspath, "categorized_taxa.csv"))
 
 # Circuitscape/isolation by resistance output --------
 
-# Write csv for taxa that we need to process with Circuitscape
+# Save separate lists of isolation by distance & resistance taxa to variables
+isolation_by_distance_taxa <- dplyr::filter(preclustered_isolation_taxa,
+          is.na(risk), filter_category == "isolation by distance")
 isolation_by_resistance_taxa <- dplyr::filter(preclustered_isolation_taxa,
           is.na(risk), filter_category == "isolation by resistance")
 
+
+# Write csv for taxa that we need to process with Circuitscape
 write_csv(isolation_by_resistance_taxa, file.path(groupingspath,
           "isolation_by_resistance_taxa.csv"))
 
@@ -76,6 +80,16 @@ writeLines(underscored, job_file)
 close(job_file)
 
 
+
+
 # Download and write raster files for Circuitscape resistance models
 prepare_resistance_files(isolation_by_resistance_taxa, taxapath)
+
+## Run from Julia:
+# using Circuitscape
+# compute("/home/peter/data/taxa/Varanus_varius/Circuitscape_custom1.ini")
+## TO DO: make a small .jl script to run the above
+###  for all taxa in "batch_jobs.txt"
+
+
 
