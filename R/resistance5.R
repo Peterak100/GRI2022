@@ -8,6 +8,7 @@ habitat_to_resistance <- function(habitat_raster) {
 crop_resistance <- function(resistance_raster, crop_filename) {
   crop_template <- terra::rast(crop_filename)
   # Crop the resistance_raster to match "preclusters.tif"
+  ## this is actually midclusters if there is an AoO model
   terra::crop(resistance_raster, crop_template)
 }
 
