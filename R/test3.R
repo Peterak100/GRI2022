@@ -3,7 +3,7 @@
 isolation_taxa[, c(1,2,39,43,94:97)]
 # test a single taxon (substitute row number for taxon to be tested)
 
-taxonA <- isolation_taxa[18, ]
+taxonA <- isolation_taxa[9, ]
 taxonA[c(1,2)]
 
   # Add new columns to single 'taxon' dataframe
@@ -53,37 +53,46 @@ png(file = file.path(taxonpath, paste0(gsub(" ", "_",
 plot(precluster_rast31, main = paste(taxonA$ala_search_term, "preclusters31"))
 while (!is.null(dev.list())) dev.off()
 
-pixel_freq31 <- terra::freq(precluster_rast31)
+pixel_freq31 <- terra::freq(precluster_rast31) |> 
+  dplyr::rename(pix_count = count)
 # pixel_freq31 should have pixel frequencies for each precluster
-pclust_counts31 <- left_join(shapes31, pixel_freq31, copy = TRUE,
-      by = c("precluster" = "value")) |> 
-  write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-        taxonA$ala_search_term), "_precluster_counts31", ".csv")))
-
-# also save an info file with most recent year, pixel count & latin name
-## need to retrieve this for post-processing
-pclust_info31 <- dplyr::filter(pclust_counts31, precluster != 0) |> 
+pclust_info31 <- left_join(preclustered_obs31, pixel_freq31[-1],
+        by = c("precluster" = "value")) # don't need 'layer'
+# this messes up geometry, so drop it from this dataframe
+pclust_summary31 <- dplyr::filter(shapes31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
-  dplyr::summarise(pix_count = max(count, na.rm = TRUE),
-        recent_year = max(year, na.rm = TRUE), latin = max(scientificName))
-pclust_info31 <- pclust_info31 |> 
-  add_column(cluster = pclust_info31$precluster) # 6 columns
+  dplyr::summarise(recent_year = max(year, na.rm = TRUE),
+        latin = max(scientificName)) |> st_drop_geometry()
 
-# add count of observations per precluster
-pclust_recs31 <- dplyr::filter(pclust_counts31, precluster !=0) |> 
+pclust_info31 <- left_join(pclust_info31, pclust_summary31, by = "precluster")
+
+pclust_num31 <- dplyr::filter(shapes31, precluster !=0) |> 
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
-pclust_info31 <- left_join(pclust_info31, pclust_recs31, by = "precluster")
-# 7 columns
 
-# save a .csv file to retrieve for postprocessing
-pclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
-          taxonA$ala_search_term), "_preclusters_prelim", ".csv")))
+pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
+mclust_order <- c("midcluster", "precluster", "pix_count", "recent_year",
+                  "latin", "num_obs", "geometry")
+
+# if AoO file exists:
+## run AoO function to derive mclust_info31
+# else
+mclust_info32 <- pclust_info31 |> 
+  add_column(midcluster = pclust_info31$precluster) # 7 columns
+# reorder as follows:
+mclust_info32 <- mclust_info32[, mclust_order]
+### END AoO function
+
+
+# save a .csv file to retrieve for post processing
+mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
+          taxonA$ala_search_term), "_midclusters_prelim", ".csv")))
 
 
 # create a 'units' matrix of distances between polygons
 # then convert to normal numeric matrix & convert to kilometres
-prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> as.matrix()
+# needed for post processing
+prox31 <- sf::st_distance(mclust_info31) |> as.data.frame() |> as.matrix()
 prox31 <- prox31/1000
 
 # add two rows and save for use as mask_file in Circuitscape?
@@ -112,19 +121,36 @@ dplyr::filter(shapes31, precluster == 0) |>
 
 crop_rast31 <- terra::merge(precluster_rast31, orphan_rast31) |>  
   padded_trim()
+# plot(crop_rast31)
+
+# if exists("midcluster_rast31")
+crop_mid_rast31 <- terra::merge(midcluster_rast31, orphan_rast31) |> 
+  padded_trim()
+# plot(crop_mid_rast31)
+
 
 ## crop and write rasters as .tif files
 precluster_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
 orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
-terra::crop(precluster_rast31, crop_rast31,
-            filename = precluster_filename, overwrite = TRUE)
+midcluster_filename <- file.path(taxonpath, paste0("midclusters31", ".tif"))
+
+terra::crop(precluster_rast31, crop_rast31)
+## TO DO: if exists("midcluster_rast31")
+terra::crop(midcluster_rast31, crop_mid_rast31,
+            filename = midcluster_filename, overwrite = TRUE)
 terra::crop(orphan_rast31, crop_rast31,
             filename = orphan_filename, overwrite = TRUE)
 
 precluster_cellcount31 <- sum(terra::freq(precluster_rast31))
+midcluster_cellcount31 <- 0
+## TO DO: if exists("midcluster_rast31")
+midcluster_cellcount31 <- sum(terra::freq(midcluster_rast31))
+grouped_cellcount31 <- max(precluster_cellcount31, midcluster_cellcount31)
+
 orphan_cellcount31 <- sum(terra::freq(orphan_rast31)) # sum makes it numeric
 # this is returned as cell_counts in try_taxon_observations()
-output31 <- (c(precluster_cellcount31, orphan_cellcount31))
+output31 <- (c(grouped_cellcount31, orphan_cellcount31))
+
 
 # taxon$filter_category <- taxon$filter_category ## redundant?
 taxonA$num_preclusters <- max(test79$precluster)
@@ -134,13 +160,11 @@ taxonA$orphan_cellcount <- output31[2]
 
 # check that added columns contain correct (plausible) data..
 taxonA[c(1,2,94:102)]
-taxonB <- taxonA
-taxonB$orphan_cellcount <- 0
+
 
 # check that label function for 'risk' & 'filter_category' works as expected
 taxon_processed79 <- label_by_clusters(taxonA)
 taxon_processed79[c(1,2,94:102)]
-
 
 # as above, but broken down by individual label function..
 ## if further testing is needed

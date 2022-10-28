@@ -1,6 +1,6 @@
 # test preparation of single resistance files for Circuitscape..
 # isolation_by_resistance_taxa[, c(1,2,39,42,94:102)]
-taxonB <- isolation_by_resistance_taxa[14,]
+taxonB <- isolation_by_resistance_taxa[7,]
 taxonB[c(1,2)]
 
 

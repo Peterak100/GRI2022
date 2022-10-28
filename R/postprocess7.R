@@ -15,6 +15,11 @@ score_iso_dist <- function(taxa, taxapath) {
   pre_clusters9 <- read.csv(file.path(taxonpath,
         paste0(gsub(" ","_", taxonA$ala_search_term),
         "_preclusters_prelim", ".csv")), header = TRUE)
+  
+  if (file.exists(pre_clusters9)) {
+    use_generic_hdm(taxon, taxapath, crop_filename) # substitute new function
+  }
+  
   pre_clusters9 <- pre_clusters9 |> add_column(pop_name = NA,
         gene_div_special = NA, pix_ignore = 0, Ne_override = NA,
         gene_div_weight = 0, proximity = 0)
@@ -24,7 +29,8 @@ score_iso_dist <- function(taxa, taxapath) {
   return()
 }
 
-
+### WHERE DOES 'pre_clusters31 come from??
+## See test5.R
 # clusters_info32 <- pre_clusters31[,-1] # 5 columns
 
 
