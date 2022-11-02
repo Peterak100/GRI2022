@@ -1,4 +1,4 @@
-## step through the 'process_observation' function to help find any errors..
+## step through the 'process_observations' function to help find any errors..
 # check that 'isolation_taxa' looks as expected
 isolation_taxa[, c(1,2,39,43,94:97)]
 # test a single taxon (substitute row number for taxon to be tested)
@@ -43,7 +43,7 @@ test79 <- load_and_filter(taxonA, taxapath) ## up to testing this line..
 taxonpath <- suppressWarnings(taxon_path(taxonA, taxapath))
 shapes31 <- sf::st_as_sf(test79, coords = c("x", "y"), crs = METRIC_EPSG)
 scaled_eps31 <- taxonA$epsilon * 1000 * EPSILON_SENSITIVITY_SCALAR
-preclustered_obs31 <- buffer_preclustered(shapes31, scaled_eps31)
+preclustered_obs31 <- buffer_preclustered(shapes31, scaled_eps31) # 2 columns
 precluster_rast31 <- shapes_to_raster(preclustered_obs31, taxonA,
           mask_layer, taxonpath)
 
@@ -57,7 +57,7 @@ pixel_freq31 <- terra::freq(precluster_rast31) |>
   dplyr::rename(pix_count = count)
 # pixel_freq31 should have pixel frequencies for each precluster
 pclust_info31 <- left_join(preclustered_obs31, pixel_freq31[-1],
-        by = c("precluster" = "value")) # don't need 'layer'
+        by = c("precluster" = "value")) # don't need 'layer' # 3 columns
 # this messes up geometry, so drop it from this dataframe
 pclust_summary31 <- dplyr::filter(shapes31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
@@ -65,26 +65,37 @@ pclust_summary31 <- dplyr::filter(shapes31, precluster != 0) |>
         latin = max(scientificName)) |> st_drop_geometry()
 
 pclust_info31 <- left_join(pclust_info31, pclust_summary31, by = "precluster")
+# 5 columns
 
 pclust_num31 <- dplyr::filter(shapes31, precluster !=0) |> 
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
 
+
 pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
+# 6 columns
+### NEED TO RETURN 'pclust_info31'
+
+## if AoO file exists --------
+# if there is an AoO file, run AoO function to derive midcluster groups
+pclust_info31 <- pclust_info31 |> merge_AoO_regions()
+# else add a new midcluster column, and resort
 mclust_order <- c("midcluster", "precluster", "pix_count", "recent_year",
                   "latin", "num_obs", "geometry")
-
-# if AoO file exists:
-## run AoO function to derive mclust_info31
-# else
-mclust_info32 <- pclust_info31 |> 
+pclust_info31 <- pclust_info31 |> 
   add_column(midcluster = pclust_info31$precluster) # 7 columns
 # reorder as follows:
-mclust_info32 <- mclust_info32[, mclust_order]
-### END AoO function
+pclust_info3 <- pclust_info31[, mclust_order]
+
+### NEED TO RETURN 'pclust_info31' ?
+# save as sf object file to retrieve for post processing
+# see: https://r-spatial.github.io/sf/articles/sf2.html
+pclust_info31 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
+          taxonA$ala_search_term), "_preclusters_prelim", ".shp")))
+mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
+          taxonA$ala_search_term), "_midclusters_prelim", ".csv")))
 
 
-# save a .csv file to retrieve for post processing
 mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
           taxonA$ala_search_term), "_midclusters_prelim", ".csv")))
 
@@ -132,12 +143,16 @@ crop_mid_rast31 <- terra::merge(midcluster_rast31, orphan_rast31) |>
 ## crop and write rasters as .tif files
 precluster_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
 orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
-midcluster_filename <- file.path(taxonpath, paste0("midclusters31", ".tif"))
+#midcluster_filename <- file.path(taxonpath, paste0("midclusters31", ".tif"))
 
-terra::crop(precluster_rast31, crop_rast31)
+
 ## TO DO: if exists("midcluster_rast31")
 terra::crop(midcluster_rast31, crop_mid_rast31,
-            filename = midcluster_filename, overwrite = TRUE)
+            filename = precluster_filename, overwrite = TRUE)
+# else
+terra::crop(precluster_rast31, crop_rast31,
+            filename = precluster_filename, overwrite = TRUE)
+
 terra::crop(orphan_rast31, crop_rast31,
             filename = orphan_filename, overwrite = TRUE)
 

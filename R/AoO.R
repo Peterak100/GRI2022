@@ -32,20 +32,26 @@ mid_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
   }
 }
 
+## AoO function --------
 
 AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
 # AoO_FILE <- "12992.shp" # for now
 AoO_PATH <- file.path(taxonpath, AoO_FILE)
 AoO1 <- st_read(AoO_PATH)
-AoO1 <- AoO1[,c(2,13)]
+AoO1 <- AoO1[,c(2,13)] # a single multipolygon
 # latin <- AoO1[1,1] |> st_drop_geometry() |> as.character()
+
+# separates single multipolygon into separate polygons, then buffers
+## buffer distance here is < buffer for individual observations
 AoO1 <- suppressWarnings(st_cast(AoO1, "POLYGON")) |> 
   st_buffer(dist = (taxonA$epsilon * 1000) / 3) |> rename(latin = SCIENTIFIC)
 # plot(AoO1) # for just the buffered AoO regions
+
+# number new preclusters, following on from preclusters derived from obs data
 AoO1 <- AoO1 |> 
   add_column(precluster = 
       1+nrow(pclust_info31):(nrow(AoO1)+nrow(pclust_info31)-1))
-# try adding these columns later..
+
 AoO1 <- AoO1 |> add_column(pix_count = 0, recent_year = 2019, num_obs = 0)
 # sanity check for valid geometries: st_is_valid(AoO1)
 AoO1 <- rbind(pclust_info31, AoO1[,c(3,2,4,5,1,6)])
@@ -58,14 +64,14 @@ mclust_info31 <- cbind(AoO1, midcluster) |> group_by(midcluster) |>
         pix_count = max(pix_count, na.rm = TRUE),
         recent_year = max(recent_year, na.rm = TRUE),
         latin = max(latin, na.rm = TRUE),
-        num_obs = max(num_obs, na.rm = TRUE))
+        num_obs = max(num_obs, na.rm = TRUE)) # 7 columns
 # plot(mclust_info31[1], col = rainbow(nrow(mclust_info31)))
 mclust_retain <- c("midcluster","geometry")
 
 midcluster_obs31 <- mclust_info31[, mclust_retain]
 
 ## NEED TO USE A DIFFERENT FUNCTION HERE BECAUSE 'shapes_to_raster()'
-##  (line 196 of obs4.R)
+##  (line 196 of obs4.R) uses field = "precluster"
 midcluster_rast31 <- mid_shapes_to_raster(midcluster_obs31, taxonA,
         mask_layer, taxonpath)
 # plot(midcluster_rast31)
@@ -73,12 +79,8 @@ midcluster_rast31 <- mid_shapes_to_raster(midcluster_obs31, taxonA,
 pixel_mid_freq31 <- terra::freq(midcluster_rast31)
 mclust_info31$pix_count <- pixel_mid_freq31$count
 
+# add column for cluster number
+mclust_info31 <- mclust_info31 |> 
+  add_column(cluster = mclust_info31$precluster) # 8 columns
 
-
-
-
-
-### CAN ADD 'cluster' COLUMN LATER
-pclust_info31 <- pclust_info31 |> 
-  add_column(cluster = pclust_info31$precluster)
-
+### NEED TO RETURN 'mclust_info31'

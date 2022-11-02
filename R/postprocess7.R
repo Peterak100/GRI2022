@@ -261,7 +261,7 @@ CSrun$`Habitat raster or graph`$habitat_file <-
   file.path(taxonpath, paste0("resistance.tif"))
 
 CSrun$`Options for pairwise and one-to-all and all-to-one modes`$point_file <-
-  file.path(taxonpath, paste0("clusters31.tif"))
+  file.path(taxonpath, paste0("preclusters31.tif"))
 
 CSrun$`Output options`$output_file <-
   file.path(taxonpath, paste0("CSpwise2"))
@@ -271,9 +271,21 @@ write.ini(CSrun, file.path(taxonpath, paste0("Circuitscape_custom2.ini")),
           encoding = getOption("encoding"))
 
 
-## Run from Julia:
+## Run from Julia singly:
 # using Circuitscape
 # compute("/home/peter/data/taxa/Varanus_varius/Circuitscape_custom2.ini")
+# 18 patches (153 pairwise comparisons) took just over 10 mins in Windows
+#
+
+
+## for multiple taxon jobs in Julia:
+# #%%
+# jobs = readlines("batch_jobs.txt") ## not sure this is needed
+# for i in eachline("batch_jobs.txt")
+# compute(replace("path/to/Circuitscape_custom2.ini", "path/to" => i))
+# close(jobs)
+# end
+# #%%
 
 ### both all-to-one and one-to-all modes fail(!?), but pairwise mode ok
 

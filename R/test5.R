@@ -9,14 +9,11 @@ pre_clusters31 <- read.csv(file.path(taxonpath,
           paste0(gsub(" ","_", taxonA$ala_search_term),
           "_precluster_prelim", ".csv")), header = TRUE) # 7 columns
 
-
 # for these taxa Circuitscape processing steps are not needed 
 ## if taxonA$filter_category == "isolation by distance"
 # remove the first column ('precluster')?
 # clusters_info32 <- pre_clusters31[,-1] # 5 columns
 
-### NEED TO PERFORM ALL STEPS THAT RELY ON geometry FIRST,
-###  THEN DO st_drop_geometry?
 
 # TURN ALL THIS INTO A FUNCTION?
 ##  '31' IN THE CODE IS JUST FOR TESTING..
@@ -177,7 +174,22 @@ pre_clusters31 |> sf::st_drop_geometry() |>
   taxonA$ala_search_term), "_preclusters_info31", ".csv")))
 
 
+
 ## import first Circuitscape output matrix --------
+# first import saved 'sf' object
+### NEED TO USE 'st_read()'
+# if there was an AoO model and midclusters were derived:
+mid_clusters31 <- st_read(file.path(taxonpath,
+      paste0(gsub(" ","_", taxonA$ala_search_term),
+      "_midclusters_prelim", ".shp"))) # 7 columns
+# otherwise:
+mid_clusters32 <- st_read(file.path(taxonpath,
+        paste0(gsub(" ","_", taxonA$ala_search_term),
+        "_preclusters_prelim", ".shp"))) # 7 columns
+# column names in saved '.shp' file are truncated to 7 characters so rename
+mid_clusters31 <- mid_clusters31 |> rename(precluster = prclstr)
+
+
 
 # derive clusters by iteratively grouping preclusters based on
 # relative resistances calculated with Circuitscape
@@ -200,6 +212,7 @@ colnames(pwise1) <- rownames(pwise1)
 # run functions from igraph package to group preclusters into clusters
 ## TO DO: What is an appropriate level for res_factor?
 eps_factor2 <- (taxonA$disperse_log * 3) + 6.3
+res_factor <- eps_factor2
 connect1 <- which(pwise1 < res_factor, arr.ind = TRUE)
 grph1 <- igraph::graph_from_data_frame(connect1, directed = FALSE)
 groups1 <- split(unique(as.vector(connect1)),
@@ -209,14 +222,11 @@ fcluster1 <- lapply(groups1,
 
 ## This will have returned the index of the relevant list of 
 ##  grouped preclusters, so use the result as the new cluster number
-
-for (i in 1:nrow(pwise1)) {
-  pre_clusters31$cluster[i] <- which(lapply(fcluster1,
-            function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
-}
+clust_retest31 <- mid_clusters31 |> add_column(cluster = NA)
 
 # also make a new patches .tif file for newly grouped clusters
-clust_retest31 <- preclustered_obs31 |> add_column(cluster = NA)
+# clust_retest31 <- preclustered_obs31 |> add_column(cluster = NA) #?
+
 for (i in 1:nrow(pwise1)) {
   clust_retest31$cluster[i] <- which(lapply(fcluster1,
             function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
