@@ -54,14 +54,14 @@ plot(precluster_rast31, main = paste(taxonA$ala_search_term, "preclusters31"))
 while (!is.null(dev.list())) dev.off()
 
 pixel_freq31 <- terra::freq(precluster_rast31) |> 
-  dplyr::rename(pix_count = count)
+  dplyr::rename(pix_sum = count)
 # pixel_freq31 should have pixel frequencies for each precluster
 pclust_info31 <- left_join(preclustered_obs31, pixel_freq31[-1],
         by = c("precluster" = "value")) # don't need 'layer' # 3 columns
 # this messes up geometry, so drop it from this dataframe
 pclust_summary31 <- dplyr::filter(shapes31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
-  dplyr::summarise(recent_year = max(year, na.rm = TRUE),
+  dplyr::summarise(rcnt_year = max(year, na.rm = TRUE),
         latin = max(scientificName)) |> st_drop_geometry()
 
 pclust_info31 <- left_join(pclust_info31, pclust_summary31, by = "precluster")
@@ -70,30 +70,31 @@ pclust_info31 <- left_join(pclust_info31, pclust_summary31, by = "precluster")
 pclust_num31 <- dplyr::filter(shapes31, precluster !=0) |> 
   dplyr::count(precluster) |> sf::st_drop_geometry() |> 
   dplyr::rename(num_obs = n)
-
-
 pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
 # 6 columns
-### NEED TO RETURN 'pclust_info31'
+
 
 ## if AoO file exists --------
 # if there is an AoO file, run AoO function to derive midcluster groups
 pclust_info31 <- pclust_info31 |> merge_AoO_regions()
-# else add a new midcluster column, and resort
-mclust_order <- c("midcluster", "precluster", "pix_count", "recent_year",
+
+# else add a new midcluster column, and re-order columns
+## need to limit column names to 7 characters for 'ESRI Shapefile' compliance
+mclust_order <- c("mdclust", "precluster", "pix_sum", "rcnt_year",
                   "latin", "num_obs", "geometry")
-pclust_info31 <- pclust_info31 |> 
-  add_column(midcluster = pclust_info31$precluster) # 7 columns
+pclust_info32 <- pclust_info31 |> 
+  add_column(mdclust = pclust_info31$prclust) # 7 columns
 # reorder as follows:
-pclust_info3 <- pclust_info31[, mclust_order]
+pclust_info32 <- pclust_info32[, mclust_order]
+# end if
 
 ### NEED TO RETURN 'pclust_info31' ?
 # save as sf object file to retrieve for post processing
 # see: https://r-spatial.github.io/sf/articles/sf2.html
-pclust_info31 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
+pclust_info32 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
           taxonA$ala_search_term), "_preclusters_prelim", ".shp")))
-mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
-          taxonA$ala_search_term), "_midclusters_prelim", ".csv")))
+
+
 
 
 mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 

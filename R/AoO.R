@@ -33,6 +33,11 @@ mid_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
 }
 
 ## AoO function --------
+# TO DO: make this into a function and return revised pclust_info31
+
+merge_AoO_regions <- function() {
+  
+}
 
 AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
 # AoO_FILE <- "12992.shp" # for now
@@ -51,14 +56,17 @@ AoO1 <- suppressWarnings(st_cast(AoO1, "POLYGON")) |>
 AoO1 <- AoO1 |> 
   add_column(precluster = 
       1+nrow(pclust_info31):(nrow(AoO1)+nrow(pclust_info31)-1))
-
+# 3 columns
 AoO1 <- AoO1 |> add_column(pix_count = 0, recent_year = 2019, num_obs = 0)
+# 6 columns
 # sanity check for valid geometries: st_is_valid(AoO1)
+
 AoO1 <- rbind(pclust_info31, AoO1[,c(3,2,4,5,1,6)])
 # plot(AoO1[1])
 AoO1_parts <- st_cast(st_union(AoO1), "POLYGON") # list of 18?
 # plot(AoO1_parts)
 midcluster <- unlist(st_intersects(AoO1, AoO1_parts)) # a vector of clusters
+# add 'midcluster' column and summarize other columns
 mclust_info31 <- cbind(AoO1, midcluster) |> group_by(midcluster) |> 
   summarise(precluster = paste(precluster, collapse = ", "),
         pix_count = max(pix_count, na.rm = TRUE),
@@ -66,8 +74,9 @@ mclust_info31 <- cbind(AoO1, midcluster) |> group_by(midcluster) |>
         latin = max(latin, na.rm = TRUE),
         num_obs = max(num_obs, na.rm = TRUE)) # 7 columns
 # plot(mclust_info31[1], col = rainbow(nrow(mclust_info31)))
-mclust_retain <- c("midcluster","geometry")
 
+# recalculate 'pix_count' for midclusters
+mclust_retain <- c("midcluster","geometry")
 midcluster_obs31 <- mclust_info31[, mclust_retain]
 
 ## NEED TO USE A DIFFERENT FUNCTION HERE BECAUSE 'shapes_to_raster()'
@@ -78,6 +87,8 @@ midcluster_rast31 <- mid_shapes_to_raster(midcluster_obs31, taxonA,
 # recalculate 'pix_count'
 pixel_mid_freq31 <- terra::freq(midcluster_rast31)
 mclust_info31$pix_count <- pixel_mid_freq31$count
+
+
 
 # add column for cluster number
 mclust_info31 <- mclust_info31 |> 

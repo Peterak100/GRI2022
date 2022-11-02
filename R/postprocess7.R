@@ -215,6 +215,7 @@ colnames(pwise1) <- rownames(pwise1)
 # run functions from igraph package to group preclusters into clusters
 ## TO DO: What is an appropriate level for res_factor?
 eps_factor2 <- (taxonA$disperse_log * 3) + 6.3
+res_factor <- eps_factor2
 connect1 <- which(pwise1 < res_factor, arr.ind = TRUE)
 grph1 <- igraph::graph_from_data_frame(connect1, directed = FALSE)
 groups1 <- split(unique(as.vector(connect1)),
@@ -275,7 +276,7 @@ write.ini(CSrun, file.path(taxonpath, paste0("Circuitscape_custom2.ini")),
 # using Circuitscape
 # compute("/home/peter/data/taxa/Varanus_varius/Circuitscape_custom2.ini")
 # 18 patches (153 pairwise comparisons) took just over 10 mins in Windows
-#
+#  and ~11.5 mins in Ubuntu
 
 
 ## for multiple taxon jobs in Julia:
@@ -300,7 +301,6 @@ flip <- as.data.frame(cbind(pwise2[,2], pwise2[,1], pwise2[,3]))
 names(flip)<-names(pwise2)
 pwise2 <- rbind(pwise2, flip) |> dplyr::group_by(cluster) |> 
   dplyr::slice(which.min(resistance)) # returns only the 1st minima
-
 
 ## 'isolation by resistance' Post-processing in R --------
 

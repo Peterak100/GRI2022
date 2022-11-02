@@ -20,5 +20,5 @@ library(JuliaConnectoR)
 
 ## HOW TO USE CHOLMOD?? Only works with double precision??
 
-using Circuitscape
-compute("path/to/config/file.ini")
+# using Circuitscape
+# compute("path/to/config/file.ini")
