@@ -18,7 +18,7 @@ taxonA <- add_column(taxonA,
 ## only used inside the function?
 
 # 'test79' here replaces 'obs'
-test79 <- load_and_filter(taxonA, taxapath) ## up to testing this line..
+test79 <- load_and_filter(taxonA, taxapath)
 
 
 # load_and_filter combines:
@@ -74,6 +74,25 @@ pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
 # 6 columns
 midcluster_cellcount31 <- 0
 
+orphan_obs31 <- buffer_orphans(shapes31, scaled_eps31)
+orphan_rast31 <- shapes_to_raster(orphan_obs31, taxon, mask_layer, taxonpath)
+
+png(file = file.path(taxonpath, paste0(gsub(" ","_", taxonA$ala_search_term),
+      "_orphans31", ".png")), width = 2160, height = 1440, pointsize = 30)
+plot(orphan_rast31, main = paste(taxonA$ala_search_term, "orphans31"))
+while (!is.null(dev.list())) dev.off()
+
+dplyr::filter(shapes31, precluster == 0) |>
+  mut_euclidean_coords() |> write_csv(file.path(taxonpath,
+      paste0(gsub(" ", "_", taxonA$ala_search_term), "_orphans31", ".csv")))
+
+# crop and write orphan rasters as .tif file
+orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
+crop_orph_rast31 <- orphan_rast31 |>  padded_trim()
+terra::crop(orphan_rast31, crop_orph_rast31,
+      filename = orphan_filename, overwrite = TRUE)
+
+
 ## if AoO file exists --------
 # Note the 7 supporting files in addition to .shp must also be present
 # this creates and returns an new version of pclust_info31
@@ -115,7 +134,7 @@ if (file.exists(AoO_PATH)){
 
 # save mid / pre clusters as sf object file to retrieve for post processing
 # see: https://r-spatial.github.io/sf/articles/sf2.html
-pclust_info31 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
+pclust_info31 |> sf::write_sf(file.path(taxonpath, paste0(gsub(" ","_",
           taxonA$ala_search_term), "_preclusters_prelim", ".shp")))
 # throws a warning: Field names abbreviated for ESRI Shapefile driver
 
@@ -132,22 +151,6 @@ pclust_info31 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
 ## NEED TO WRITE TO CORRECT FILE PATH (i.e. taxapath)
 # write.table(mask31, "mask.txt", row.names = FALSE, col.names = FALSE)
 
-orphan_obs31 <- buffer_orphans(shapes31, scaled_eps31)
-orphan_rast31 <- shapes_to_raster(orphan_obs31, taxon, mask_layer, taxonpath)
-
-png(file = file.path(taxonpath, paste0(gsub(" ","_", taxonA$ala_search_term),
-      "_orphans31", ".png")), width = 2160, height = 1440, pointsize = 30)
-plot(orphan_rast31, main = paste(taxonA$ala_search_term, "orphans31"))
-while (!is.null(dev.list())) dev.off()
-
-dplyr::filter(shapes31, precluster == 0) |>
-  mut_euclidean_coords() |> write_csv(file.path(taxonpath,
-      paste0(gsub(" ", "_", taxonA$ala_search_term), "_orphans31", ".csv")))
-
-# crop and write orphan rasters as .tif file
-orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
-terra::crop(orphan_rast31, crop_rast31,
-            filename = orphan_filename, overwrite = TRUE)
 
 precluster_cellcount31 <- sum(terra::freq(precluster_rast31))
 grouped_cellcount31 <- max(precluster_cellcount31, midcluster_cellcount31)
@@ -155,9 +158,8 @@ orphan_cellcount31 <- sum(terra::freq(orphan_rast31)) # sum makes it numeric
 # this is returned as cell_counts in try_taxon_observations()
 output31 <- (c(grouped_cellcount31, orphan_cellcount31))
 
-
 # taxon$filter_category <- taxon$filter_category ## redundant?
-taxonA$num_preclusters <- max(test79$precluster)
+taxonA$num_preclusters <- max(pclust_info31$midcluster)
 taxonA$num_orphans <- sum(test79$precluster == 0)
 taxonA$precluster_cellcount <- output31[1]
 taxonA$orphan_cellcount <- output31[2]

@@ -45,7 +45,10 @@ merge_AoO_regions <- function(taxon, taxonpath) {
     add_column(precluster = 
       1+nrow(pclust_info31):(nrow(AoO1)+nrow(pclust_info31)-1),
       pix_count = 0, recent_year = 2018, num_obs = 0)
-  AoO1 <- rbind(pclust_info31, AoO1[,c(3,2,4,5,1,6)])
+  pclust_sort <- c("precluster","geometry","pix_count",
+            "recent_year","latin","num_obs")
+  # why does position of 'geometry' change?
+  AoO1 <- rbind(pclust_info31, AoO1[,pclust_sort])
   AoO1_parts <- sf::st_cast(sf::st_union(AoO1), "POLYGON")
   midcluster <- unlist(sf::st_intersects(AoO1, AoO1_parts))
   mclust_info31 <- cbind(AoO1, midcluster) |> dplyr::group_by(midcluster) |> 
@@ -56,9 +59,5 @@ merge_AoO_regions <- function(taxon, taxonpath) {
         num_obs = max(num_obs, na.rm = TRUE))
   return(mclust_info31)
 }
-  
-
-
-
 
 

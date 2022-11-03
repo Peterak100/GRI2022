@@ -3,13 +3,12 @@ mid_clusters31 <- st_read(file.path(taxonpath,
         paste0(gsub(" ","_", taxonA$ala_search_term),
         "_preclusters_prelim", ".shp"))) # 7 columns
 # column names in saved '.shp' file are truncated to 7 characters so rename
-mid_clusters31 <- mid_clusters31 |> rename(precluster = prclstr)
-
-
-# add column for cluster number
-pclust_info31 <- pclust_info31 |> 
-  add_column(cluster = pclust_info31$midcluster) # 8 columns
-
+mid_clusters31 <- mid_clusters31 |> 
+  rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
+         recent_year = rcnt_yr)
+# add new first column as placeholder for cluster number
+mid_clusters31 <- cbind(cluster = mid_clusters31$midcluster, mid_clusters31)
+  
 
 ## 'isolation by distance' Post-processing in R --------
 
