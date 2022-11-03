@@ -5,7 +5,8 @@ source("common1.R")
 # source("verify2.R")
 source("categorize3.R")
 source("obs4.R")
-source("resistance5.R") # working on this 7th Oct 2022
+source("resistance5.R")
+source("AoO.R") # working on this 7th Oct 2022
 
 
 # Precategorize taxa based on record counts --------

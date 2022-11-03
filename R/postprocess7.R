@@ -1,3 +1,11 @@
+# first need to read in saved version of pclust_info
+## see test5.R
+
+# create a 'units' matrix of distances between polygons
+# then convert to normal numeric matrix & convert to kilometres
+# needed for post processing
+prox31 <- sf::st_distance(pclust_info31) |> as.data.frame() |> as.matrix()
+prox31 <- prox31/1000
 
 ## 'isolation by distance' Post-processing in R --------
 

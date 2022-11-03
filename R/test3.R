@@ -6,7 +6,7 @@ isolation_taxa[, c(1,2,39,43,94:97)]
 taxonA <- isolation_taxa[9, ]
 taxonA[c(1,2)]
 
-  # Add new columns to single 'taxon' dataframe
+# Add new columns to single 'taxon' dataframe
 taxonA <- add_column(taxonA, 
             num_preclusters = 0, 
             num_orphans = 0, 
@@ -54,14 +54,14 @@ plot(precluster_rast31, main = paste(taxonA$ala_search_term, "preclusters31"))
 while (!is.null(dev.list())) dev.off()
 
 pixel_freq31 <- terra::freq(precluster_rast31) |> 
-  dplyr::rename(pix_sum = count)
+  dplyr::rename(pix_count = count)
 # pixel_freq31 should have pixel frequencies for each precluster
 pclust_info31 <- left_join(preclustered_obs31, pixel_freq31[-1],
         by = c("precluster" = "value")) # don't need 'layer' # 3 columns
 # this messes up geometry, so drop it from this dataframe
 pclust_summary31 <- dplyr::filter(shapes31, precluster != 0) |> 
   dplyr::group_by(precluster) |> 
-  dplyr::summarise(rcnt_year = max(year, na.rm = TRUE),
+  dplyr::summarise(recent_year = max(year, na.rm = TRUE),
         latin = max(scientificName)) |> st_drop_geometry()
 
 pclust_info31 <- left_join(pclust_info31, pclust_summary31, by = "precluster")
@@ -72,41 +72,54 @@ pclust_num31 <- dplyr::filter(shapes31, precluster !=0) |>
   dplyr::rename(num_obs = n)
 pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
 # 6 columns
-
+midcluster_cellcount31 <- 0
 
 ## if AoO file exists --------
-# if there is an AoO file, run AoO function to derive midcluster groups
-pclust_info31 <- pclust_info31 |> merge_AoO_regions()
+# Note the 7 supporting files in addition to .shp must also be present
+# this creates and returns an new version of pclust_info31
+AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
+AoO_PATH <- file.path(taxonpath, AoO_FILE)
+if (file.exists(AoO_PATH)){
+  pclust_info31 <- merge_AoO_regions(taxonA)
+  # recalculate 'pix_count' for midclusters
+  mclust_retain <- c("midcluster","geometry")
+  midcluster_obs31 <- pclust_info31[, mclust_retain]
+  # need to use a different function here because 'shapes_to_raster()'
+  #  uses field = "precluster"
+  midcluster_rast31 <- mid_shapes_to_raster(midcluster_obs31, taxonA,
+          mask_layer, taxonpath) # plot(midcluster_rast31)
+  # also need to save a .tif file for Circuitscape patches layer
+  crop_mid_rast31 <- terra::merge(midcluster_rast31, orphan_rast31) |> 
+    padded_trim()
+  # plot(crop_mid_rast31)
+  preclust_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
+  # crop and write midcluster raster as .tif file
+  terra::crop(midcluster_rast31, crop_mid_rast31,
+              filename = preclust_filename, overwrite = TRUE)
+  # recalculate 'pix_count'
+  pixel_mid_freq31 <- terra::freq(midcluster_rast31)
+  pclust_info31$pix_count <- pixel_mid_freq31$count
+  midcluster_cellcount31 <- sum(terra::freq(midcluster_rast31))
+} else {
+  mclust_order <- c("midcluster", "precluster", "pix_count", "recent_year",
+              "latin", "num_obs", "geometry")
+  pclust_info31 <- pclust_info31 |> 
+    add_column(midcluster = pclust_info31$precluster)
+  pclust_info31 <- pclust_info31[, mclust_order]
+  crop_rast31 <- terra::merge(precluster_rast31, orphan_rast31) |>  
+    padded_trim()
+  # plot(crop_rast31)
+  # crop and write precluster raster as .tif file
+  preclust_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
+}
 
-# else add a new midcluster column, and re-order columns
-## need to limit column names to 7 characters for 'ESRI Shapefile' compliance
-mclust_order <- c("mdclust", "precluster", "pix_sum", "rcnt_year",
-                  "latin", "num_obs", "geometry")
-pclust_info32 <- pclust_info31 |> 
-  add_column(mdclust = pclust_info31$prclust) # 7 columns
-# reorder as follows:
-pclust_info32 <- pclust_info32[, mclust_order]
-# end if
-
-### NEED TO RETURN 'pclust_info31' ?
-# save as sf object file to retrieve for post processing
+# save mid / pre clusters as sf object file to retrieve for post processing
 # see: https://r-spatial.github.io/sf/articles/sf2.html
-pclust_info32 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
+pclust_info31 |> st_write(file.path(taxonpath, paste0(gsub(" ","_",
           taxonA$ala_search_term), "_preclusters_prelim", ".shp")))
+# throws a warning: Field names abbreviated for ESRI Shapefile driver
 
-
-
-
-mclust_info31 |> write_csv(file.path(taxonpath, paste0(gsub(" ","_", 
-          taxonA$ala_search_term), "_midclusters_prelim", ".csv")))
-
-
-# create a 'units' matrix of distances between polygons
-# then convert to normal numeric matrix & convert to kilometres
-# needed for post processing
-prox31 <- sf::st_distance(mclust_info31) |> as.data.frame() |> as.matrix()
-prox31 <- prox31/1000
-
+### Make a mask layer???
 # add two rows and save for use as mask_file in Circuitscape?
 ## not sure this either works, or is particularly useful
 # mask31 <- prox31[1:2,]
@@ -131,38 +144,13 @@ dplyr::filter(shapes31, precluster == 0) |>
   mut_euclidean_coords() |> write_csv(file.path(taxonpath,
       paste0(gsub(" ", "_", taxonA$ala_search_term), "_orphans31", ".csv")))
 
-crop_rast31 <- terra::merge(precluster_rast31, orphan_rast31) |>  
-  padded_trim()
-# plot(crop_rast31)
-
-# if exists("midcluster_rast31")
-crop_mid_rast31 <- terra::merge(midcluster_rast31, orphan_rast31) |> 
-  padded_trim()
-# plot(crop_mid_rast31)
-
-
-## crop and write rasters as .tif files
-precluster_filename <- file.path(taxonpath, paste0("preclusters31", ".tif"))
+# crop and write orphan rasters as .tif file
 orphan_filename <- file.path(taxonpath, paste0("orphans31", ".tif"))
-#midcluster_filename <- file.path(taxonpath, paste0("midclusters31", ".tif"))
-
-
-## TO DO: if exists("midcluster_rast31")
-terra::crop(midcluster_rast31, crop_mid_rast31,
-            filename = precluster_filename, overwrite = TRUE)
-# else
-terra::crop(precluster_rast31, crop_rast31,
-            filename = precluster_filename, overwrite = TRUE)
-
 terra::crop(orphan_rast31, crop_rast31,
             filename = orphan_filename, overwrite = TRUE)
 
 precluster_cellcount31 <- sum(terra::freq(precluster_rast31))
-midcluster_cellcount31 <- 0
-## TO DO: if exists("midcluster_rast31")
-midcluster_cellcount31 <- sum(terra::freq(midcluster_rast31))
 grouped_cellcount31 <- max(precluster_cellcount31, midcluster_cellcount31)
-
 orphan_cellcount31 <- sum(terra::freq(orphan_rast31)) # sum makes it numeric
 # this is returned as cell_counts in try_taxon_observations()
 output31 <- (c(grouped_cellcount31, orphan_cellcount31))
@@ -176,7 +164,6 @@ taxonA$orphan_cellcount <- output31[2]
 
 # check that added columns contain correct (plausible) data..
 taxonA[c(1,2,94:102)]
-
 
 # check that label function for 'risk' & 'filter_category' works as expected
 taxon_processed79 <- label_by_clusters(taxonA)

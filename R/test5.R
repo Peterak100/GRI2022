@@ -1,4 +1,15 @@
 ### STEP-BY-STEP TESTING FOR POST-PROCESSING
+mid_clusters31 <- st_read(file.path(taxonpath,
+        paste0(gsub(" ","_", taxonA$ala_search_term),
+        "_preclusters_prelim", ".shp"))) # 7 columns
+# column names in saved '.shp' file are truncated to 7 characters so rename
+mid_clusters31 <- mid_clusters31 |> rename(precluster = prclstr)
+
+
+# add column for cluster number
+pclust_info31 <- pclust_info31 |> 
+  add_column(cluster = pclust_info31$midcluster) # 8 columns
+
 
 ## 'isolation by distance' Post-processing in R --------
 
