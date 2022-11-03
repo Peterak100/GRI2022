@@ -14,7 +14,7 @@ source("AoO.R")
 # Precategorize using functions from g_categorize2.R
 # Categorize risk using queries to ALA: slow.
 ## adds 4 columns to BATCH_TAXA_CSV:
-## "state_count", "count", "risk", "filter_category"
+## "state_count", "count", "risk", and "filter_category"
 start_time1 <- Sys.time()
 precategorized_taxa <- precategorize_risk(taxa)
 end_time1 <- Sys.time()

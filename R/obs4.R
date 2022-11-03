@@ -5,7 +5,7 @@
 ## for testing a single taxon see test3.R
 
 # subfunction that downloads observation records from ALA
-## and saves to variable 'obs'
+## and saves to the variable 'obs'
 download_observations <- function(taxon) {
   cat(" Retrieving observations from ALA for", taxon$ala_search_term,
       "...\n")
@@ -19,8 +19,6 @@ download_observations <- function(taxon) {
   cat("  Observations retrieved successfully\n")
   return(obs)
 }
-
-# test71 <- download_observations(taxon)
 
 # subfunction that retrieves taxon observations already saved locally
 read_cached_observations <- function(taxon, obs_csv_path) {
@@ -44,7 +42,6 @@ read_cached_observations <- function(taxon, obs_csv_path) {
 #    return(obs)
 #  }
 #}
-# test72 <- load_or_download_obs2(taxon, taxapath)
 
 ## omitting option to load from previously downloaded records..
 ##  overwrites existing data
@@ -57,7 +54,6 @@ load_or_download_obs <- function(taxon, taxapath, force_download=FALSE) {
   write_csv(obs, obs_csv_path)
   return(obs)
 }
-# test73 <- load_or_download_obs(taxonA, taxapath)
 
 # Clean observation data ------
 
@@ -73,11 +69,12 @@ remove_location_duplicates <- function(obs) {
   obs |> arrange(desc(eventDate)) |>
     distinct(decimalLatitude, decimalLongitude, year, .keep_all = TRUE)
 }
-## INCLUDE 'year' in distinct() TO ALLOW FOR SAME PLACE BUT DIFFERENT TIME?
-##  does not change size of clusters, but means more records per cluster
+## TO DO: Include 'year' in distinct() above to allow for same location
+##  but different year? Will not change size of clusters, but
+##  will mean more records per cluster
 
-###  further filter for nonsensical locations using galah_geolocate()
-###  with a predefined polygon that covers geographic limits of Australia??
+## TO DO: further filter for nonsensical locations using galah_geolocate()
+##  with a predefined polygon that covers geographic limits of Australia??
 
 # Filter observations data
 ## also include 'maybe_remove_subspecies(taxon)' # not needed?
@@ -87,7 +84,6 @@ filter_observations <- function(obs, taxon) {
     remove_missing_coords() |>
     remove_location_duplicates()
 }
-# test74 <- filter_observations(test73, taxon)
 
 # Cluster observation data ------
 
@@ -110,7 +106,6 @@ mut_euclidean_coords <- function(obs){
         y = sf::st_coordinates(obs)[,2]) |>
     sf::st_drop_geometry()
 }
-# test75 <- add_euclidean_coords(test74) |> mut_euclidean_coords()
 
 # adds a new column for 'precluster' number
 ## try changing the epsilon value to test different scenarios
@@ -130,16 +125,6 @@ scan_clusters <- function(obs, eps) {
 # mutate(obs, precluster = preclusters$cluster)
 # }
 
-# test76 <- scan_clusters2(test75)
-# plot(test76$x, test76$y, pch = 19, cex = 0.4,
-#   xlim = c(2100000, 3000000), ylim = c(2250000, 2850000))
-## title(main = paste("All observations for", taxon$ala_search_term))
-
-## for no orphans (orphans are not coloured)
-# plot(test76$x, test76$y, pch = 19, cex = 0.4, col = test76$precluster,
-#   xlim = c(2100000, 3000000), ylim = c(2250000, 2850000))
-## title(main = paste(taxon$ala_search_term, "- orphans not shown"))
-
 ### adjust epsilon to test relative effect of dispersal
 ## taxon$epsilon <- taxon$epsilon*2
 
@@ -150,7 +135,6 @@ precluster_observations <- function(obs, taxon) {
     mut_euclidean_coords() |> 
     scan_clusters(taxon$epsilon)
 }
-# test77 <- precluster_observations(test74, taxon)
 
 # Load and filter observations --------
 
@@ -161,7 +145,6 @@ load_and_filter <- function(taxon, taxapath) {
     filter_observations(taxon) |> 
     precluster_observations(taxon)
 }
-# test79 <- load_and_filter(taxon, taxapath) # should be same as test77
 
 # Buffer preclusters & Write observation data ------
 
@@ -172,26 +155,24 @@ buffer_obs <- function(shapes, scaled_eps) {
     dplyr::group_by(precluster) |>  
     dplyr::summarise(precluster = unique(precluster))
 }
-# test31 <- buffer_obs(shapes, scaled_eps)
 
 # Add buffer around preclusters (dataframe with x and y)
 buffer_preclustered <- function(shapes, scaled_eps) {
   dplyr::filter(shapes, precluster != 0) |>  
     buffer_obs(scaled_eps)
 }
-# test31preclus <- buffer_preclustered(shapes, scaled_eps)
 
-# Add buffer around orphans WHY FUNCTION OF SHAPES?? (sf object with geometry)
+# Add buffer around orphans
+## not sure why this is a function of 'shapes' (sf object with geometry)
 buffer_orphans <- function(shapes, scaled_eps) {
   dplyr::filter(shapes, precluster == 0) |>  
     buffer_obs(scaled_eps)
 }
-# test31orph <- buffer_orphans(shapes, scaled_eps)
 
-# Convert points to raster file matching mask_layer
-### runs with previously buffered sf object
-### this function errors if mask_layer is not reset during current session
-###  because it is a non-exportable object?
+# Convert points to a raster file matching mask_layer
+## runs with previously buffered sf object
+## this function errors if mask_layer is not reset during current session
+##  because it is a non-exportable object?
 ## why print(shapes) & print(shapevect)? (lines 2 & 4 of this function)
 shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
   print(shapes)
@@ -205,8 +186,10 @@ shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
   }
 }
 
-# Trim removes all NA values, then pad by up to ten pixels each side
+# Trim removes all NA values, then pads by up to ten pixels each side
 ## but so that the padded version does not extend beyond original raster!
+## TO DO: move standard pad_by value to config.toml
+## TO DO: make overall pad_by value a function of epsilon for given taxon?
 padded_trim <- function(gen_raster) {
   xresolution <- terra::xres(gen_raster)
   yresolution <- terra::yres(gen_raster)
@@ -244,8 +227,6 @@ padded_trim <- function(gen_raster) {
   padded <- terra::extend(trimmed, padding)
   return(padded)
 }
-
-# pad3test <- padded_trim(crop_rast)
 
 # Write Precluster function --------
 
@@ -288,13 +269,13 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   midcluster_cellcount <- 0
   orphan_obs <- buffer_orphans(shapes, scaled_eps)
   orphan_rast <- shapes_to_raster(orphan_obs, taxon, mask_layer, taxonpath)
-  png(file = file.path(taxonpath, paste0(gsub(" ","_", taxonA$ala_search_term),
+  png(file = file.path(taxonpath, paste0(gsub(" ","_", taxon$ala_search_term),
           "_orphans", ".png")), width = 2160, height = 1440, pointsize = 30)
-  plot(orphan_rast, main = paste(taxonA$ala_search_term, "orphans"))
+  plot(orphan_rast, main = paste(taxon$ala_search_term, "orphans"))
   while (!is.null(dev.list())) dev.off()
   dplyr::filter(shapes, precluster == 0) |>
     mut_euclidean_coords() |> write_csv(file.path(taxonpath,
-          paste0(gsub(" ", "_", taxonA$ala_search_term), "_orphans", ".csv")))
+          paste0(gsub(" ", "_", taxon$ala_search_term), "_orphans", ".csv")))
   # crop and write orphan rasters as .tif file
   orphan_filename <- file.path(taxonpath, paste0("orphans", ".tif"))
   crop_orph_rast <- orphan_rast |>  padded_trim()
@@ -312,7 +293,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     midcluster_obs <- pclust_info[, mclust_retain]
     # need to use a different function here because 'shapes_to_raster()'
     #  uses field = "precluster"
-    midcluster_rast <- mid_shapes_to_raster(midcluster_obs, taxonA,
+    midcluster_rast <- mid_shapes_to_raster(midcluster_obs, taxon,
           mask_layer, taxonpath)
     # also need to save a .tif file for Circuitscape patches layer
     crop_mid_rast <- terra::merge(midcluster_rast, orphan_rast) |> 
