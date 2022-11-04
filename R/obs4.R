@@ -186,6 +186,19 @@ shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
   }
 }
 
+# new function to rasterize midclusters
+mid_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
+  print(shapes)
+  shapevect <- terra::vect(shapes)
+  print(shapevect)
+  if (length(shapevect) > 0) {
+    obs_raster <- terra::rasterize(shapevect, mask_layer,
+                    field = "midcluster")
+  } else {
+    mask_layer * 0
+  }
+}
+
 # Trim removes all NA values, then pads by up to ten pixels each side
 ## but so that the padded version does not extend beyond original raster!
 ## TO DO: move standard pad_by value to config.toml
@@ -287,7 +300,34 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   AoO_FILE <- paste0("AoO_",gsub(" ","_", taxon$ala_search_term), ".shp")
   AoO_PATH <- file.path(taxonpath, AoO_FILE)
   if (file.exists(AoO_PATH)){
-    pclust_info <- merge_AoO_regions(taxon)
+    AoO1 <- sf::st_read(AoO_PATH)
+    AoO1 <- AoO1[,c(2,13)] # a single multipolygon
+    # separates single multipolygon into separate polygons, then buffers
+    ## buffer distance here is < buffer for individual observations
+    AoO1 <- suppressWarnings(sf::st_cast(AoO1, "POLYGON")) |> 
+      sf::st_buffer(dist = (taxon$epsilon * 1000) / 3) |> 
+      dplyr::rename(latin = SCIENTIFIC)
+    # number new preclusters
+    # numbering to following on from preclusters derived from obs data
+    AoO1 <- AoO1 |> 
+      add_column(precluster = 
+              1+nrow(pclust_info):(nrow(AoO1)+nrow(pclust_info)-1),
+              pix_count = 0, recent_year = 2018, num_obs = 0)
+    pclust_sort <- c("precluster","geometry","pix_count",
+                     "recent_year","latin","num_obs")
+    # why does position of 'geometry' change?
+    AoO1 <- rbind(pclust_info, AoO1[,pclust_sort])
+    AoO1_parts <- sf::st_cast(sf::st_union(AoO1), "POLYGON")
+    midcluster <- unlist(sf::st_intersects(AoO1, AoO1_parts))
+    mclust_info <- cbind(AoO1, midcluster) |> 
+      dplyr::group_by(midcluster) |> 
+      dplyr::summarise(precluster = paste(precluster, collapse = ", "),
+          pix_count = max(pix_count, na.rm = TRUE),
+          recent_year = max(recent_year, na.rm = TRUE),
+          latin = max(latin, na.rm = TRUE),
+          num_obs = max(num_obs, na.rm = TRUE))
+    pclust_info <- mclust_info
+    # pclust_info <- merge_AoO_regions(taxon)
     # recalculate 'pix_count' for midclusters
     mclust_retain <- c("midcluster","geometry")
     midcluster_obs <- pclust_info[, mclust_retain]
@@ -317,7 +357,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     # crop and write precluster raster as .tif file
     preclust_filename <- file.path(taxonpath, paste0("preclusters", ".tif"))
   }
-  # save mid / pre clusters as sf object file to retrieve for post processing
+  # save mid/pre clusters as sf object file to retrieve for post processing
   # see: https://r-spatial.github.io/sf/articles/sf2.html
   pclust_info |> sf::write_sf(file.path(taxonpath, paste0(gsub(" ","_",
           taxon$ala_search_term), "_preclusters_prelim", ".shp")))
@@ -380,8 +420,9 @@ label_by_clusters <- function(taxa) {
 
 process_observations <- function(taxa, mask_layer, taxapath) {
   # Add new columns to taxa dataframe
-  preclustered_taxa <- add_column(taxa, num_preclusters = 0, num_orphans = 0, 
-          precluster_cellcount = 0, orphan_cellcount = 0, error = NA) 
+  preclustered_taxa <- add_column(taxa, num_preclusters = 0,
+              num_orphans = 0, precluster_cellcount = 0,
+              orphan_cellcount = 0, error = NA) 
   num_preclusters <- 0
   # Loop over each taxon
   for (i in 1:nrow(preclustered_taxa)) {

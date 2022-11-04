@@ -1,12 +1,11 @@
 # reworking of prefilter.R (main script to run)
-# setwd("/home/peter/junk/Galah1")
 setwd("/home/peter/GRI2022/R")
 source("common1.R")
 # source("verify2.R")
 source("categorize3.R")
 source("obs4.R")
 source("resistance5.R")
-source("AoO.R")
+# source("AoO.R")
 
 
 # Precategorize taxa based on record counts --------
@@ -18,7 +17,7 @@ source("AoO.R")
 start_time1 <- Sys.time()
 precategorized_taxa <- precategorize_risk(taxa)
 end_time1 <- Sys.time()
-end_time1 - start_time1 # 59 secs for first 30 taxa records
+end_time1 - start_time1 # ~1 to 1.3 mins for first 30 taxa records
 # display selected columns for first 14 taxa..
 # head(precategorized_taxa[,c(1,2,39, 94:97)],14)
 

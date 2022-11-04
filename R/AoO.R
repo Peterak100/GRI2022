@@ -17,18 +17,6 @@
 ## of actual AoO, not just dispersal beyond where individual was observed
 ### USING taxa$epsilon / 3 FOR AoO BUFFERING FOR NOW
 
-# new function to rasterize midclusters
-mid_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
-  print(shapes)
-  shapevect <- terra::vect(shapes)
-  print(shapevect)
-  if (length(shapevect) > 0) {
-    obs_raster <- terra::rasterize(shapevect, mask_layer,
-                            field = "midcluster")
-  } else {
-    mask_layer * 0
-  }
-}
 
 # main AoO function
 merge_AoO_regions <- function(taxon, taxonpath) {

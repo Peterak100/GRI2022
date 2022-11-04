@@ -99,8 +99,36 @@ terra::crop(orphan_rast31, crop_orph_rast31,
 AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
 AoO_PATH <- file.path(taxonpath, AoO_FILE)
 if (file.exists(AoO_PATH)){
-  pclust_info31 <- merge_AoO_regions(taxonA)
-  # recalculate 'pix_count' for midclusters
+  AoO1 <- sf::st_read(AoO_PATH)
+  AoO1 <- AoO1[,c(2,13)] # a single multipolygon
+  # separates single multipolygon into separate polygons, then buffers
+  ## buffer distance here is < buffer for individual observations
+  AoO1 <- suppressWarnings(sf::st_cast(AoO1, "POLYGON")) |> 
+    sf::st_buffer(dist = (taxonA$epsilon * 1000) / 3) |> 
+    dplyr::rename(latin = SCIENTIFIC)
+  # number new preclusters
+  # numbering to following on from preclusters derived from obs data
+  AoO1 <- AoO1 |> 
+    add_column(precluster = 
+                 1+nrow(pclust_info31):(nrow(AoO1)+nrow(pclust_info31)-1),
+               pix_count = 0, recent_year = 2018, num_obs = 0)
+  pclust_sort <- c("precluster","geometry","pix_count",
+                   "recent_year","latin","num_obs")
+  # why does position of 'geometry' change?
+  AoO1 <- rbind(pclust_info31, AoO1[,pclust_sort])
+  AoO1_parts <- sf::st_cast(sf::st_union(AoO1), "POLYGON")
+  midcluster <- unlist(sf::st_intersects(AoO1, AoO1_parts))
+  mclust_info31 <- cbind(AoO1, midcluster) |> dplyr::group_by(midcluster) |> 
+    dplyr::summarise(precluster = paste(precluster, collapse = ", "),
+        pix_count = max(pix_count, na.rm = TRUE),
+        recent_year = max(recent_year, na.rm = TRUE),
+        latin = max(latin, na.rm = TRUE),
+        num_obs = max(num_obs, na.rm = TRUE))
+  pclust_info31 <- mclust_info31
+  
+#  getting rid of this subfunction - too confusing  
+#  pclust_info31 <- merge_AoO_regions(taxonA)
+# recalculate 'pix_count' for midclusters
   mclust_retain <- c("midcluster","geometry")
   midcluster_obs31 <- pclust_info31[, mclust_retain]
   # need to use a different function here because 'shapes_to_raster()'
