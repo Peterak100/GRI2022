@@ -18,14 +18,32 @@ crop_resistance <- function(resistance_raster, crop_filename) {
 ## otherwise run use_generic_hdm
 
 use_generic_hdm <- function(taxon, taxapath, crop_filename) {
-  cat("Using generic resistance HDM for", taxon$ala_search_term, "\n")
-  resistance_filename <- suppressWarnings(file.path(taxon_path(taxon, taxapath),
-          RESISTANCE_RASTER))
+  cat("Using generic resistance model for", taxon$ala_search_term, "\n")
+  resistance_filename <- suppressWarnings(file.path(taxon_path(taxon,
+          taxapath), RESISTANCE_RASTER))
   terra::rast(HABITAT_RASTER_PATH) |> 
     habitat_to_resistance() |> 
     crop_resistance(crop_filename) |> 
-    terra::writeRaster(filename = resistance_filename, overwrite=TRUE)
+    terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
 }
+
+# should be okay just to overwrite "resistance.tif" with either model?
+## TO DO: change 'resistance2_filename' back to 'resistance_filename'
+use_SMP_layer <- function(taxon, taxapath, crop_filename) {
+  cat("Using HDM-derived resistance layer for", taxon$ala_search_term, "\n")
+  resistance2_filename <- suppressWarnings(file.path(taxon_path(taxon,
+          taxapath), "resistance2.tif"))
+  SMP_MODEL <- paste0("SMP_",gsub(" ","_",
+              taxon$ala_search_term), ".tif")
+  SMP_filename31 <- suppressWarnings(file.path(taxon_path(taxonB,
+              taxapath), SMP_MODEL31))
+  terra::rast(SMP_filename31) |> 
+    habitat_to_resistance() |> 
+    crop_resistance(crop_filename31) |> 
+    terra::writeRaster(filename = resistance2_filename, overwrite = TRUE)
+}
+
+
 
 ## this is a minimal version of this function for now without a tryCatch
 ##  and only using the generic resistance layer

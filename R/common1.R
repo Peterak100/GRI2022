@@ -25,6 +25,7 @@ datapath <- file.path(path_home(), "data")
 ## Paths to particular files and folders
 taxapath <- file.path(datapath, "taxa")
 groupingspath <- file.path(datapath, "groupings")
+AoOpath <- file.path(datapath, "AoOfiles")
 
 # metric reference system epsg code
 METRIC_EPSG <- 3111

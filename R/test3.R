@@ -97,7 +97,7 @@ terra::crop(orphan_rast31, crop_orph_rast31,
 # Note the 7 supporting files in addition to .shp must also be present
 # this creates and returns an new version of pclust_info31
 AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
-AoO_PATH <- file.path(taxonpath, AoO_FILE)
+AoO_PATH <- file.path(AoOpath, AoO_FILE)
 if (file.exists(AoO_PATH)){
   AoO1 <- sf::st_read(AoO_PATH)
   AoO1 <- AoO1[,c(2,13)] # a single multipolygon

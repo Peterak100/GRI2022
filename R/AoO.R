@@ -3,6 +3,8 @@
 ## 1565 taxa in the database have AoO models (2462 do not)
 # library(RColorBrewer) # just for plotting colour options
 
+### THIS SCRIPT NOW REDUNDANT
+
 # sf object has 13 columns including TAXON_ID, SCIENTIFIC, and geometry
 # geometry is a single multipolygon
 # xmin: 2170810 ymin: 2539457 xmax: 2444810 ymax: 2561457
