@@ -1,57 +1,58 @@
 # test preparation of single resistance files for Circuitscape..
+## Habitat Importance Models (HIMs) are single geotiffs, 75m2 / pixel
+## Habitat Distribution Models (HDMs) are zip files, containing
+### a single geotiff, 225m2 / pixel
+
 # isolation_by_resistance_taxa[, c(1,2,39,42,94:102)]
 taxonB <- isolation_by_resistance_taxa[7,]
 taxonB[c(1,2)]
 
-
+taxonpath <- suppressWarnings(taxon_path(taxonB, taxapath))
+paste0(gsub(" ", "_", taxon$ala_search_term), "_orphans", ".csv")
 ## path to relevant 'preclusters.tif' file
-crop_filename23 <- suppressWarnings(file.path(taxon_path(taxonB, taxapath),
+crop_filename31 <- suppressWarnings(file.path(taxon_path(taxonB, taxapath),
             paste0("preclusters31", ".tif")))
 
-#        if (taxonB$resist_model_type[[1]] == "Species") {
-#          download_hdm(taxonB, taxapath, crop_filename)
-#        } else {
-#          use_generic_hdm(taxonB, taxapath, crop_filename)
-#        }
+HIM_FILE31 <- paste0("HIM_",gsub(" ","_", taxonB$ala_search_term), ".tif")
+HIM_PATH31 <- file.path(taxonpath, HIM_FILE31)
+SMP_FILE31 <- paste0("SMP_",gsub(" ","_", taxonB$ala_search_term), ".tif")
+SMP_PATH31 <- file.path(taxonpath, SMP_FILE31)
 
+## TO DO: add if (file.exists(HIM_PATH31)) {} as a subsequent step..
+if (file.exists(SMP_PATH31)) {
+  use_SMP_layer(taxonB, taxapath, crop_filename31)
+  } else {
+    use_generic_hdm(taxonB, taxapath, crop_filename31)
+}
 
 
 # this generates and saves a particular version of the 'resistance.tif' file
 ## derived from the generic 'habitat.tif' but converted to resistance
 ## values and cropped to match the particular 'preclusters.tif' file
-use_generic_hdm(taxonB, taxapath, crop_filename23)
+use_generic_hdm(taxonB, taxapath, crop_filename31)
 
 
-
-# Download the HDM layer for this taxon
-# Formatted as:
-# "https://maps2.biodiversity.vic.gov.au/Models/
-##     SMP_Dromaius%20novaehollandiae_Emu_10001.zip"
-
-# download_hdm <- function(taxon, taxapath, crop_filename) 
-
-# cat("Downloading specific habitat layer for", taxonB$ala_search_term, "\n")
-
-taxonB_id <- taxonB$vic_taxon_id[[1]] # col 4 (a 5-digit number)
-
-taxonB_escaped <- gsub(" ", "%20", taxonB$delwp_taxon)[[1]]
-common_nameB <- gsub(" ", "%20", taxonB$delwp_common_name)[[1]]
-url <- paste0("https://maps2.biodiversity.vic.gov.au/Models/SMP_",
-            taxonB_escaped, "_", common_nameB, "_", taxonB_id, ".zip")
-taxonB_dir <- taxon_path(taxonB, taxapath)
-downloadB_dir <- file.path(taxonB_dir, "download")
-dir.create(downloadB_dir, recursive = TRUE)
-zippathB <- file.path(downloadB_dir, "hdm.zip")
-download.file(url, zippathB) ### DOESN'T WORK changed url?
-
-
-# If the download doesn't exist, download it
-if (!dir.exists(download_dir) || is.na(Sys.glob(file.path(download_dir,
-                  "*.tif"))[1])) { 
-    download.file(url, zippath)
-    unzip(zippath, exdir=download_dir)
-    file.remove(zippath)
+use_generic_hdm <- function(taxon, taxapath, crop_filename) {
+  cat("Using generic resistance model for", taxon$ala_search_term, "\n")
+  resistance_filename <- suppressWarnings(file.path(taxon_path(taxon,
+                  taxapath), RESISTANCE_RASTER))
+  terra::rast(HABITAT_RASTER_PATH) |> 
+    habitat_to_resistance() |> 
+    crop_resistance(crop_filename) |> 
+    terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
 }
+
+use_SMP_layer <- function(taxon, taxapath, crop_filename) {
+  cat("Using HDM-derived resistance layer for", taxon$ala_search_term, "\n")
+  terra::rast(SMP_filename) |> 
+    habitat_to_resistance() |> 
+    crop_resistance(crop_filename) |> 
+    terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
+}
+
+
+
+
 
 habitat_filename <- Sys.glob(file.path(download_dir, "*.tif"))[1]
 resistance_filename <- file.path(taxon_path(taxon, taxapath),

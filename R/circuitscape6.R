@@ -1,7 +1,5 @@
 ## Circuitscape processing..
-library(JuliaConnectoR)
-
-
+# library(JuliaConnectoR) ? use this package to run Julia commands?
 
 
 ## read in standard Circuitscape.ini file
@@ -20,5 +18,24 @@ library(JuliaConnectoR)
 
 ## HOW TO USE CHOLMOD?? Only works with double precision??
 
+
+## run in Julia --------
+## cd /home/peter/data
+# julia
 # using Circuitscape
-# compute("path/to/config/file.ini")
+## either:
+# compute("/home/peter/data/taxa/taxon/Circuitscape_custom1.ini")
+## or:
+# for i in eachline("batch_jobs.txt")
+# compute(replace("/home/peter/data/taxa/taxon987/Circuitscape_custom1.ini",
+#                "taxon987" => i))
+# end
+
+## or for testing:
+# for i in eachline("batch_jobs.txt")
+# println(replace("/home/peter/data/taxa/taxon987/Circuitscape_custom1.ini",
+#                "taxon987" => i))
+# end
+
+## 
+

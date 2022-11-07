@@ -7,52 +7,46 @@
 # subfunction that downloads observation records from ALA
 ## and saves to the variable 'obs'
 download_observations <- function(taxon) {
+  obs_csv_path <- suppressWarnings(file.path(taxon_path(taxon, taxapath),
+            "observations.csv"))
   cat(" Retrieving observations from ALA for", taxon$ala_search_term,
       "...\n")
   obs <- galah_call() |> galah_identify(taxon$ala_search_term) |>
     galah_filter(year >= as.character(TIME_START),
-                 year <= as.character(TIME_END),
-                 basisOfRecord == BASIS3, stateProvince == STATE,
-                 profile = "ALA") |>
+            year <= as.character(TIME_END),
+            basisOfRecord == BASIS3, stateProvince == STATE,
+            profile = "ALA") |>
     galah_select(group = "basic","year") |>
     atlas_occurrences()
   cat("  Observations retrieved successfully\n")
+  write_csv(obs, obs_csv_path)
   return(obs)
 }
 
 # subfunction that retrieves taxon observations already saved locally
 read_cached_observations <- function(taxon, obs_csv_path) {
+  obs_csv_path <- suppressWarnings(file.path(taxon_path(taxon, taxapath),
+            "observations.csv"))
   cat("  Loading cached observations for ", taxon$ala_search_term, "\n")
   obs <- read.csv(obs_csv_path, header = TRUE)
   return(obs)
 }
 
-### This works, but not needed for now? ##
 #  combined function: either reads previously saved records, or
 #  downloads records from ALA and saves them in relevant folder
-#load_or_download_obs2 <- function(taxon, taxapath, force_download=FALSE) {
-#  obs_csv_path <- file.path(taxon_path(taxon, taxapath), "observations.csv")
-#  if (!force_download && file.exists(obs_csv_path)) {
-#    obs <- read_cached_observations(taxon, obs_csv_path)
-#    return(obs)
-#  } else {
-#    obs <- download_observations(taxon)
-#    cat("  Writing ", obs_csv_path, "\n")
-#    write_csv(obs, obs_csv_path)
-#    return(obs)
-#  }
-#}
-
-## omitting option to load from previously downloaded records..
 ##  overwrites existing data
-##  is 'force_download=FALSE' needed?
 load_or_download_obs <- function(taxon, taxapath, force_download=FALSE) {
   obs_csv_path <- suppressWarnings(file.path(taxon_path(taxon, taxapath),
                   "observations.csv"))
-  obs <- download_observations(taxon)
-  cat("  Writing", obs_csv_path, "\n")
-  write_csv(obs, obs_csv_path)
-  return(obs)
+  if (!force_download && file_exists(obs_csv_path)) {
+    obs <- read_cached_observations(taxon, obs_csv_path)
+    return(obs)
+  } else {
+    obs <- download_observations(taxon)
+    cat(" Writing", obs_csv_path, "\n")
+    write_csv(obs, obs_csv_path)
+    return(obs)
+  }
 }
 
 # Clean observation data ------
@@ -297,8 +291,8 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   # use AoO (Area of Occupancy) file if there is one
   # the (6?) supporting files in addition to *.shp must also be present
   # this creates and returns a totally new version of pclust_info
-  AoO_FILE <- paste0("AoO_",gsub(" ","_", taxon$ala_search_term), ".shp")
-  AoO_PATH <- file.path(taxonpath, AoO_FILE)
+  AoO_FILE <- paste0("AoO_", gsub(" ","_", taxon$ala_search_term), ".shp")
+  AoO_PATH <- file.path(AoOpath, AoO_FILE)
   if (file.exists(AoO_PATH)){
     AoO1 <- sf::st_read(AoO_PATH)
     AoO1 <- AoO1[,c(2,13)] # a single multipolygon
@@ -431,6 +425,7 @@ process_observations <- function(taxa, mask_layer, taxapath) {
     cat("\nTaxon: ", taxon$ala_search_term, "\n")
     # Download, filter and precluster observation records
     obs <- load_and_filter(taxon, taxapath)
+    
     # Create rasters with numbered preclustered observations
     # If there are any preclusters
     if (max(obs$precluster) != 0) {
@@ -446,4 +441,22 @@ process_observations <- function(taxa, mask_layer, taxapath) {
     preclustered_taxa[i, ]$orphan_cellcount <- cell_counts[2]
     }
   return(label_by_clusters(preclustered_taxa))
+}
+
+## is this needed to download obs in chunks?
+# retrieve_chunk_obs <- function(taxa) {
+#  n1 <- nrow(taxa)
+#  r1 <- rep(1:ceiling(n1/GALAH_MAXROWS), each = GALAH_MAXROWS)[1:n1]
+#  s1 <- lapply(split(taxa, r1), retrieve_bulk_obs)
+  # Split apply combine chunks
+#  do.call(rbind, s1)
+# }
+
+retrieve_bulk_obs <- function(taxa) {
+  # Loop over each taxon
+  for (i in 1:nrow(taxa)) {
+    taxon <- taxa[i, ]
+    # Download observation records and write to csv files
+    obs <- download_observations(taxon)
+    }
 }

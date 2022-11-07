@@ -5,7 +5,6 @@ source("common1.R")
 source("categorize3.R")
 source("obs4.R")
 source("resistance5.R")
-# source("AoO.R")
 
 
 # Precategorize taxa based on record counts --------
@@ -31,6 +30,13 @@ isolation_taxa <- dplyr::filter(precategorized_taxa,
         filter_category == "isolation by distance" | 
         filter_category == "isolation by resistance")
 
+# Initial bulk download of all observations and write to individual
+## .csv files, no further processing
+start_time1 <- Sys.time()
+retrieve_bulk_obs(isolation_taxa)
+end_time1 <- Sys.time()
+end_time1 - start_time1
+
 # adds another 5 columns to isolation_taxa
 # omitting 'throw_errors=TRUE' as 4th argument to function
 start_time1 <- Sys.time()
@@ -38,8 +44,6 @@ preclustered_isolation_taxa <- process_observations(isolation_taxa,
         mask_layer, taxapath)
 end_time1 <- Sys.time()
 end_time1 - start_time1 # ~4.41 mins for first 30 taxon records
-
-## warnings that dir.create() already exists should now be suppressed
 
 
 ## WHAT DOES / WOULD 'throw_errors=TRUE' DO IN THE ABOVE FUNCTION?
@@ -67,20 +71,12 @@ isolation_by_distance_taxa <- dplyr::filter(preclustered_isolation_taxa,
 isolation_by_resistance_taxa <- dplyr::filter(preclustered_isolation_taxa,
           is.na(risk), filter_category == "isolation by resistance")
 
-
-# Write csv for taxa that we need to process with Circuitscape
-write_csv(isolation_by_resistance_taxa, file.path(groupingspath,
-          "isolation_by_resistance_taxa.csv"))
-
 # Write list of taxa to process in Circuitscape
 #  as a single column job-list text file
 job_file <- file(file.path(datapath, "batch_jobs.txt"))
 underscored <- gsub(" ", "_", isolation_by_resistance_taxa$ala_search_term)
 writeLines(underscored, job_file)
 close(job_file)
-
-
-
 
 # Download and write raster files for Circuitscape resistance models
 prepare_resistance_files(isolation_by_resistance_taxa, taxapath)

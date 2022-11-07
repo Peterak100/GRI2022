@@ -1,6 +1,6 @@
 ### STEP-BY-STEP TESTING FOR POST-PROCESSING
 mid_clusters31 <- st_read(file.path(taxonpath,
-        paste0(gsub(" ","_", taxonA$ala_search_term),
+        paste0(gsub(" ","_", taxon$ala_search_term),
         "_preclusters_prelim", ".shp"))) # 7 columns
 # column names in saved '.shp' file are truncated to 7 characters so rename
 mid_clusters31 <- mid_clusters31 |> 
@@ -12,36 +12,45 @@ mid_clusters31 <- cbind(cluster = mid_clusters31$midcluster, mid_clusters31)
 
 ## 'isolation by distance' Post-processing in R --------
 
-# import preclusters preliminary dataframe
-## import midclusters instead now?
-## THIS HAS CLUSTER NUMBERS ALREADY ASSIGNED
-pre_clusters31 <- read.csv(file.path(taxonpath,
-          paste0(gsub(" ","_", taxonA$ala_search_term),
-          "_precluster_prelim", ".csv")), header = TRUE) # 7 columns
-
+# run function on isolation_by_distance_taxa
 # for these taxa Circuitscape processing steps are not needed 
-## if taxonA$filter_category == "isolation by distance"
-# remove the first column ('precluster')?
-# clusters_info32 <- pre_clusters31[,-1] # 5 columns
-
 
 # TURN ALL THIS INTO A FUNCTION?
-##  '31' IN THE CODE IS JUST FOR TESTING..
+##  '31' IN THE CODE BELOW IS JUST FOR TESTING..
+some_function <- function(taxa, taxapath) {
+  for (i in 1:nrow(taxa)) {
+    taxon <- taxa[i, ]
+    
+  }
+}
+
+
+# import preclusters preliminary dataframe for given taxon
+pre_clusters31 <- st_read(file.path(taxonpath,
+        paste0(gsub(" ","_", taxon$ala_search_term),
+        "_preclusters_prelim", ".shp"))) # 7 columns
+# column names in saved '.shp' file are truncated to 7 characters so rename
+pre_clusters31 <- pre_clusters31 |> 
+  rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
+         recent_year = rcnt_yr)
+# add a new first column as placeholder for cluster number
+pre_clusters31 <- cbind(cluster = pre_clusters31$midcluster, pre_clusters31)
 
 # add new columns, to be filled or updated subsequently
 pre_clusters31 <- pre_clusters31 |> add_column(pop_name = NA,
           gene_div_special = NA, pix_ignore = 0, Ne_override = NA,
-          gene_div_weight = 0, proximity = 0) # 13 columns
+          gene_div_weight = 0, proximity = 0) # 14 columns
 
 # update populations for 'isolation by distance' taxa --------
 
-### If and when available, record expert opinion or info derived from
-# genetic data on effective size of, or proportion of genetic diversity
-# contained within, a given local population, along with relevant local
-# population (precluster) names in a supplementary file
+### If and when available, record expert opinion
+## or info derived from genetic data on
+## effective pop'n size or proportion of genetic diversity contained within
+## a given local population, along with relevant
+## local population (precluster) names in a supplementary file
 
 # import expert opinion estimates file for given taxon if file exists
-expert1_filename <- suppressWarnings(file.path(taxon_path(taxonA, taxapath), 
+expert1_filename <- suppressWarnings(file.path(taxon_path(taxon, taxapath), 
                 paste0("expert_op1_preclust", ".csv")))
 if (file.exists(expert1_filename)){
   expert1 <- read.csv(expert1_filename, header = TRUE)
@@ -77,7 +86,12 @@ for (i in 1:nrow(pre_clusters31)) {
 
 # add another column for which is the nearest polygon
 nearest <- sf::st_nearest_feature(pre_clusters31)
-pre_clusters31 <- cbind(pre_clusters31, nearest) # 14 columns
+pre_clusters31 <- cbind(pre_clusters31, nearest) # 15 columns
+
+# create a 'units' matrix of distances between polygons
+# then convert to a normal numeric matrix & convert to kilometres
+prox31 <- sf::st_distance(pre_clusters31) |> as.data.frame() |> as.matrix()
+prox31 <- prox31/1000
 
 ## update proximity column with nearest distance
 # slice needs to operate on a data frame
@@ -88,7 +102,7 @@ for (i in 1:nrow(pre_clusters31)) {
 # The above makes $proximity a list. Need to convert back to numeric
 pre_clusters31$proximity <- as.numeric(pre_clusters31$proximity)
 
-# add columns for weighted size of precluster, epsilon proximity, and
+# add 3 columns for weighted size of precluster, epsilon proximity, and
 ## effective (Victorian) population size (rounded to whole numbers)
 ## Vic_popn_size should be == 0 if extinct in Vic or unknown
 pre_clusters31 <- pre_clusters31 |> 
@@ -96,6 +110,7 @@ pre_clusters31 <- pre_clusters31 |>
   mutate(eps_prox = proximity / taxonA$epsilon) |> 
   mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
 pre_clusters31$Ne_est <- round(pre_clusters31$Ne_est, digits = 0)
+# 18 columns
 
 # update with Ne values manually entered for particular populations
 for (i in 1:nrow(pre_clusters31)) {
@@ -107,7 +122,7 @@ for (i in 1:nrow(pre_clusters31)) {
 # add risk score calculation columns
 pre_clusters31 <- pre_clusters31 |> add_column(size_nearest = 0,
         gene_flow_factor = 0, div_risk = 0, inbreed_risk = 0,
-        cluster_score = 0) # should now be 22 columns
+        cluster_score = 0) # should now be 23 columns
 # derive size of nearest precluster..
 for (i in 1:nrow(pre_clusters31)){
   pre_clusters31$size_nearest[i] <- dplyr::slice(pre_clusters31,
@@ -182,6 +197,8 @@ for (i in 1:nrow(pre_clusters31)) {
 pre_clusters31 |> sf::st_drop_geometry() |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
   taxonA$ala_search_term), "_preclusters_info31", ".csv")))
+
+
 
 
 

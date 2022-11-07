@@ -18,6 +18,9 @@ taxonA <- add_column(taxonA,
 ## only used inside the function?
 
 # 'test79' here replaces 'obs'
+test76 <- read_cached_observations(taxonA, taxapath)
+test77 <- download_observations(taxonA)
+test78 <- load_or_download_obs(taxonA, taxapath)
 test79 <- load_and_filter(taxonA, taxapath)
 
 
