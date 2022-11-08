@@ -1,14 +1,4 @@
 ### STEP-BY-STEP TESTING FOR POST-PROCESSING
-mid_clusters31 <- st_read(file.path(taxonpath,
-        paste0(gsub(" ","_", taxon$ala_search_term),
-        "_preclusters_prelim", ".shp"))) # 7 columns
-# column names in saved '.shp' file are truncated to 7 characters so rename
-mid_clusters31 <- mid_clusters31 |> 
-  rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
-         recent_year = rcnt_yr)
-# add new first column as placeholder for cluster number
-mid_clusters31 <- cbind(cluster = mid_clusters31$midcluster, mid_clusters31)
-  
 
 ## 'isolation by distance' Post-processing in R --------
 
@@ -41,7 +31,7 @@ pre_clusters31 <- pre_clusters31 |> add_column(pop_name = NA,
           gene_div_special = NA, pix_ignore = 0, Ne_override = NA,
           gene_div_weight = 0, proximity = 0) # 14 columns
 
-# update populations for 'isolation by distance' taxa --------
+## update populations for 'isolation by distance' taxa --------
 
 ### If and when available, record expert opinion
 ## or info derived from genetic data on
@@ -188,6 +178,7 @@ for (i in 1:nrow(pre_clusters31)) {
     pre_clusters31$gene_div_weight[i]
 }
 # fragmented risk for a given taxon will be sum(pre_clusters31$cluster_score)
+# frag_risk31 <- sum(pre_clusters31$cluster_score)
 ## TO DO: DATA BASE WILL NEED A NEW COLUMN FOR THIS,
 ##  AND THEN ANOTHER NEW COLUMN FOR THE FINAL RISK SCORE AFTER ADJUSTING 
 ##  FOR VARIOUS OTHER FACTORS
@@ -196,115 +187,123 @@ for (i in 1:nrow(pre_clusters31)) {
 ## use 'taxon' in place of 'taxonA' for main obs4.R script
 pre_clusters31 |> sf::st_drop_geometry() |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-  taxonA$ala_search_term), "_preclusters_info31", ".csv")))
+  taxonA$ala_search_term), "_preclusters_info", ".csv")))
 
 
 
+## import 1st Circuitscape output matrix --------
+# need to import the saved 'sf' object
 
+some_function <- function(taxa, taxapath) {
+  for (i in 1:nrow(taxa)) {
+    taxon <- taxa[i, ]
+    
+  }
+}
 
-## import first Circuitscape output matrix --------
-# first import saved 'sf' object
-### NEED TO USE 'st_read()'
-# if there was an AoO model and midclusters were derived:
 mid_clusters31 <- st_read(file.path(taxonpath,
-      paste0(gsub(" ","_", taxonA$ala_search_term),
-      "_midclusters_prelim", ".shp"))) # 7 columns
-# otherwise:
-mid_clusters32 <- st_read(file.path(taxonpath,
-        paste0(gsub(" ","_", taxonA$ala_search_term),
-        "_preclusters_prelim", ".shp"))) # 7 columns
+          paste0(gsub(" ","_", taxon$ala_search_term),
+          "_preclusters_prelim", ".shp"))) # 7 columns
 # column names in saved '.shp' file are truncated to 7 characters so rename
-mid_clusters31 <- mid_clusters31 |> rename(precluster = prclstr)
-
-
+mid_clusters31 <- mid_clusters31 |> 
+  rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
+         recent_year = rcnt_yr)
+# add a new first column as placeholder for cluster number
+mid_clusters31 <- cbind(cluster = mid_clusters31$midcluster, mid_clusters31)
+# 8 columns
 
 # derive clusters by iteratively grouping preclusters based on
 # relative resistances calculated with Circuitscape
 # will be space delimited (" "), so use sep = " "
-pwise1 <- read.table(file.path(taxonpath,
-            paste0("CSpwise1_resistances",".out")), header = TRUE,
-            sep = " ", row.names = 1, check.names = FALSE)
-# rownames are "1", "2", etc
-# but colnames are "1.0", "2.0", "3.0" etc
-colnames(pwise1) <- rownames(pwise1)
+CScape_FILE1 <- paste0("CSpwise1_resistances", ".out")
+CScape_PATH1 <- file.path(taxonpath, CScape_FILE1)
+if (file.exists(CScape_PATH1)){
+  pwise1 <- read.table(CScape_PATH1, header = TRUE, sep = " ",
+                row.names = 1, check.names = FALSE)
+  # rownames are "1", "2", etc
+  # but colnames are "1.0", "2.0", "3.0" etc
+  colnames(pwise1) <- rownames(pwise1)
+  # use different resistance threshold for generic resistance layer?
+  SMP_MODEL <- paste0("SMP_", gsub(" ","_", taxon$ala_search_term), ".tif")
+  SMP_filename <- suppressWarnings(file.path(SMPpath, SMP_MODEL))
+  HIM_MODEL <- paste0("HIM_", gsub(" ","_", taxon$ala_search_term), ".tif")
+  HIM_filename <- suppressWarnings(file.path(HIMpath, HIM_MODEL))
+  if(file.exists(SMP_filename) | file.exists(HIM_filename)) {
+    resist_factor <- (taxon$disperse_log * 3) + 8.8
+  } else {
+    resist_factor <- (taxon$disperse_log * 3) + 6.3
+  }
+  # run functions from igraph package to group preclusters into clusters
+  connect1 <- which(pwise1 < resist_factor, arr.ind = TRUE)
+  grph1 <- igraph::graph_from_data_frame(connect1, directed = FALSE)
+  groups1 <- split(unique(as.vector(connect1)),
+            igraph::clusters(grph1)$membership)
+  fcluster1 <- lapply(groups1,
+            FUN = function(list.cor){rownames(pwise1)[list.cor]})
+  for (j in 1:nrow(pwise1)) {
+    mid_clusters31$cluster[j] <- which(lapply(fcluster1,
+            function(x) grep(paste0("^",j,"$"),x))!=0) |> unname()
+  }
+  } else {
+  cat("Circuitscape results NOT FOUND for",
+           taxon$ala_search_term, "\n")
+}
+# create summary table based on cluster number
+clusters_info31 <- mid_clusters31 |> dplyr::group_by(cluster) |> 
+  dplyr::summarise(midcluster = paste(midcluster, collapse = ", "),
+          precluster = paste(precluster, collapse = ", "),
+          pix_count = sum(pix_count), recent_year = max(recent_year),
+          latin = max(latin), num_obs = sum(num_obs),
+          geometry = sf::st_union(geometry)) # also 8 columns
+# also make a new patches .tif file for newly grouped clusters
+shapevect31 <- terra::vect(clusters_info31) # plot(shapevect31)
+obs_retest_rast <- terra::rasterize(shapevect31, mask_layer,
+          field = "cluster") # plot(obs_retest_rast31)
+obs_retest_filename <- file.path(taxonpath, paste0("clusters", ".tif"))
+crop_final_rast <- obs_retest_rast |> padded_trim()
+terra::crop(obs_retest_rast, crop_final_rast,
+            filename = obs_retest_filename, overwrite = TRUE)
 
-## TO DO: What is a sufficiently robust method to determine an appropriate
-##  minimum resistance thresh for an initial pair of preclusters
-##  to be considered fully connected?
+## TO DO: is the above a sufficiently robust method to determine
+##  a 'resist_factor' (minimum resistance threshold for an initial pair
+##  of preclusters to be considered fully connected)?
 ### MAKE THIS SOME MULTIPLE OF EPSILON?
 ###  how much variance to allow for between high & low dispersal taxa??
-### Use a different value when using the generic resistance (habitat)
-##  layer as opposed to when using a species-specific one?
 
-# run functions from igraph package to group preclusters into clusters
-## TO DO: What is an appropriate level for res_factor?
-eps_factor2 <- (taxonA$disperse_log * 3) + 6.3
-res_factor <- eps_factor2
-connect1 <- which(pwise1 < res_factor, arr.ind = TRUE)
-grph1 <- igraph::graph_from_data_frame(connect1, directed = FALSE)
-groups1 <- split(unique(as.vector(connect1)),
-              igraph::clusters(grph1)$membership)
-fcluster1 <- lapply(groups1,
-              FUN = function(list.cor){rownames(pwise1)[list.cor]})
 
-## This will have returned the index of the relevant list of 
-##  grouped preclusters, so use the result as the new cluster number
-clust_retest31 <- mid_clusters31 |> add_column(cluster = NA)
+## prepare 2nd Circuitscape run --------
 
-# also make a new patches .tif file for newly grouped clusters
-# clust_retest31 <- preclustered_obs31 |> add_column(cluster = NA) #?
-
-for (i in 1:nrow(pwise1)) {
-  clust_retest31$cluster[i] <- which(lapply(fcluster1,
-            function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
-}
-
-clust_retest31 <- clust_retest31 |> dplyr::group_by(cluster) |> 
-  dplyr::summarize(geometry = sf::st_union(geometry))
-
-shapevect31 <- terra::vect(clust_retest31)
-obs_retest_rast31 <- terra::rasterize(shapevect31, mask_layer,
-            field = "cluster")
-obs_test_filename <- file.path(taxonpath, paste0("clusters31", ".tif"))
-terra::crop(obs_retest_rast31, crop_rast31,
-            filename = obs_test_filename, overwrite = TRUE)
-
-## run Circuitscape again --------
-
-## NOW USE "clusters31.tif" as a new patches layer for a 2nd Circuitscape run
+## Now using "clusters.tif" as a new patches layer
 # read in the vanilla version of the Circuitscape.ini file with standard
 # settings for a Circuitscape pairwise run
-Cscape1path <- file.path(datapath, paste0("circuitscape_pwise.ini"))
-CSrun <- read.ini(Cscape1path, encoding = getOption("encoding"))
+
+## TO DO: make this into a function..
+Cscape1path <- file.path(datapath, paste0("circuitscape_pwise", ".ini"))
+CSrun <- ini::read.ini(Cscape1path, encoding = getOption("encoding"))
 # produces a list of 11
 
 # update for source files relevant to the particular taxon:
 CSrun$`Habitat raster or graph`$habitat_file <- 
   file.path(taxonpath, paste0("resistance.tif"))
-
-CSrun$`Options for pairwise and one-to-all and all-to-one modes`$point_file <-
-  file.path(taxonpath, paste0("clusters31.tif"))
-
+CSrun$`Options for pairwise and one-to-all and
+all-to-one modes`$point_file <-
+  file.path(taxonpath, paste0("clusters.tif"))
 CSrun$`Output options`$output_file <-
   file.path(taxonpath, paste0("CSpwise2"))
-
 # save as a customized .ini file in the relevant directory
-write.ini(CSrun, file.path(taxonpath, paste0("Circuitscape_custom2.ini")),
-          encoding = getOption("encoding"))
+ini::write.ini(CSrun, file.path(taxonpath,
+  paste0("Circuitscape_custom2", ".ini")))
 
 
 ## Run from Julia:
 # using Circuitscape
-# compute("/home/peter/data/taxa/Varanus_varius/Circuitscape_custom2.ini")
-
-### both all-to-one and one-to-all modes fail(!?), but pairwise mode ok
 
 
-## import second Circuitscape output matrix --------
+## import 2nd Circuitscape output matrix --------
 pwise2 <- read.table(file.path(taxonpath,
-            paste0("CSpwise2_resistances_3columns", ".out")), header = TRUE,
-            sep = " ", col.names = c("cluster", "closest", "resistance"),
-            check.names = FALSE)
+        paste0("CSpwise2_resistances_3columns", ".out")), header = TRUE,
+        sep = " ", col.names = c("cluster", "closest", "resistance"),
+        check.names = FALSE)
 # transform to find which is the next nearest cluster by resistance
 flip <- as.data.frame(cbind(pwise2[,2], pwise2[,1], pwise2[,3]))
 names(flip)<-names(pwise2)
@@ -324,6 +323,7 @@ for (i in 1:nrow(pwise1)) {
   pre_clusters31$cluster[i] <- which(lapply(fcluster1,
       function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
 }
+
 # create summary table based on cluster number
 clusters_info31 <- pre_clusters31 |> dplyr::group_by(cluster) |> 
   dplyr::summarize(pix_count = sum(pix_count), num_obs = sum(num_obs),

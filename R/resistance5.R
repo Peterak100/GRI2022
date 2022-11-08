@@ -12,6 +12,12 @@ crop_resistance <- function(resistance_raster, crop_filename) {
   terra::crop(resistance_raster, crop_template)
 }
 
+## To rename HIM (and SMP?) files --------
+
+## make a translation table in Excel as for AoO files and run
+# awk -F',' 'system("mv " $1 " " $2)' HIMs_list2.csv
+## in bash terminal
+
 # subfunction to choose the correct model for the resistance layer
 ## priority is to use the species-specific Habitat Distribution Model (SMP),
 ## then the Habitat Importance Model (HIM) if there is no SMP file,
@@ -65,11 +71,11 @@ prepare_resistance_files <- function(taxa, taxapath) {
         file.path(taxonpath, paste0("resistance", ".tif"))
       CSrun$`Options for pairwise and one-to-all and
       all-to-one modes`$point_file <-
-        file.path(taxonpath, paste0("preclusters.tif"))
+        file.path(taxonpath, paste0("preclusters", ".tif"))
       CSrun$`Output options`$output_file <-
         file.path(taxonpath, paste0("CSpwise1"))
       # save as a customized .ini file in the relevant directory
-      write.ini(CSrun, file.path(taxonpath,
+      ini::write.ini(CSrun, file.path(taxonpath,
         paste0("Circuitscape_custom1", ".ini")))
     }
   }  

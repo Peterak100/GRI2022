@@ -168,7 +168,7 @@ buffer_orphans <- function(shapes, scaled_eps) {
 ## this function errors if mask_layer is not reset during current session
 ##  because it is a non-exportable object?
 ## why print(shapes) & print(shapevect)? (lines 2 & 4 of this function)
-shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
+pre_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
   print(shapes)
   shapevect <- terra::vect(shapes)
   print(shapevect)
@@ -235,6 +235,17 @@ padded_trim <- function(gen_raster) {
   return(padded)
 }
 
+# Rename AoO files --------
+
+## make a translation table in Excel and save as a .csv file
+## needs old name ($1), new name ($2), and dummy info ($3) columns
+## cd to relevant Ubuntu directory containing AoO files
+## copy the .csv translation table there and then run this in terminal:
+# awk -F',' 'system("mv " $1 " " $2)' convert1.csv
+## -F',' indicates the translation file is comma separated
+## having a 3rd column prevents $'\r' being added to new file names
+
+
 # Write Precluster function --------
 
 ## Write the preclustered and orphan observations to raster files
@@ -245,8 +256,8 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   preclustered_obs <- buffer_preclustered(shapes, scaled_eps)
   cat("Num preclusters for", taxon$ala_search_term,":",
       nrow(preclustered_obs), "\n")
-  precluster_rast <- shapes_to_raster(preclustered_obs, taxon, mask_layer,
-        taxonpath)
+  precluster_rast <- pre_shapes_to_raster(preclustered_obs, taxon,
+        mask_layer, taxonpath)
   # save a plot of preclusters
   png(file = file.path(taxonpath, paste0(gsub(" ", "_", taxon$ala_search_term),
       "_preclusters", ".png")), width = 2160, height = 1440, pointsize = 30)
@@ -275,7 +286,8 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   # 6 columns
   midcluster_cellcount <- 0
   orphan_obs <- buffer_orphans(shapes, scaled_eps)
-  orphan_rast <- shapes_to_raster(orphan_obs, taxon, mask_layer, taxonpath)
+  orphan_rast <- pre_shapes_to_raster(orphan_obs, taxon, mask_layer,
+          taxonpath)
   png(file = file.path(taxonpath, paste0(gsub(" ","_", taxon$ala_search_term),
           "_orphans", ".png")), width = 2160, height = 1440, pointsize = 30)
   plot(orphan_rast, main = paste(taxon$ala_search_term, "orphans"))
@@ -289,7 +301,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   terra::crop(orphan_rast, crop_orph_rast,
           filename = orphan_filename, overwrite = TRUE)
   # use AoO (Area of Occupancy) file if there is one
-  # the (6?) supporting files in addition to *.shp must also be present
+  # the (7?) supporting files in addition to *.shp must also be present
   # this creates and returns a totally new version of pclust_info
   AoO_FILE <- paste0("AoO_", gsub(" ","_", taxon$ala_search_term), ".shp")
   AoO_PATH <- file.path(AoOpath, AoO_FILE)
@@ -325,7 +337,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     # recalculate 'pix_count' for midclusters
     mclust_retain <- c("midcluster","geometry")
     midcluster_obs <- pclust_info[, mclust_retain]
-    # need to use a different function here because 'shapes_to_raster()'
+    # need to use a different function here because 'pre_shapes_to_raster()'
     #  uses field = "precluster"
     midcluster_rast <- mid_shapes_to_raster(midcluster_obs, taxon,
           mask_layer, taxonpath)
