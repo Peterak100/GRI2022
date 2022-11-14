@@ -34,7 +34,7 @@ choose_resistance_model <- function(taxon, taxapath, crop_filename) {
   } else if (file.exists(HIM_filename)) {
     res_model <- HIM_filename
     cat("Using HIM-derived resistance layer for",
-        taxon$ala_seach_term, "\n")
+        taxon$ala_search_term, "\n")
     } else {
         res_model <- HABITAT_RASTER_PATH
         cat("Using generic resistance model for",
@@ -56,17 +56,23 @@ prepare_resistance_files <- function(taxa, taxapath) {
                 taxapath), RESISTANCE_RASTER))
     if (file.exists(crop_filename)) {
       choose_resistance_model(taxon, taxapath, crop_filename)
-      terra::rast(res_model) |> 
-        habitat_to_resistance() |> 
-        crop_resistance(crop_filename) |> 
-        terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
+      res_layer <- terra::rast(res_model)
+      # HIM models are 1 pixel = 75m2, so need to aggregate cells by
+      # factor of 3 so that 1 pixel = 225m2 to match preclusters
+      if (terra::res(res_layer)[1] == 75) {
+        res_layer <- terra::aggregate(res_layer, fact = 3)
+      }
+      res_layer <- res_layer |>  
+      habitat_to_resistance() |> 
+      crop_resistance(crop_filename) |> 
+      terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
       # read in a vanilla version of the Circuitscape.ini file with
       # standard settings for a Circuitscape pairwise run
       Cscape1path <- file.path(datapath,
                 paste0("circuitscape_pwise", ".ini"))
       CSrun <- ini::read.ini(Cscape1path, encoding = getOption("encoding"))
       # produces a list of 11
-      # update .ini file with source files relevant to particular taxon:
+      # update .ini files with source files relevant to particular taxon:
       CSrun$`Habitat raster or graph`$habitat_file <-
         file.path(taxonpath, paste0("resistance", ".tif"))
       CSrun$`Options for pairwise and one-to-all and
@@ -77,8 +83,23 @@ prepare_resistance_files <- function(taxa, taxapath) {
       # save as a customized .ini file in the relevant directory
       ini::write.ini(CSrun, file.path(taxonpath,
         paste0("Circuitscape_custom1", ".ini")))
+      # make a 2nd .ini file for 2nd Circuitscape run:
+      CSrun$`Options for pairwise and one-to-all and
+      all-to-one modes`$point_file <-
+        file.path(taxonpath, paste0("clusters", ".tif"))
+      CSrun$`Output options`$output_file <-
+        file.path(taxonpath, paste0("CSpwise2"))
+      # save as a 2nd customized .ini file in the relevant directory
+      ini::write.ini(CSrun, file.path(taxonpath,
+        paste0("Circuitscape_custom2", ".ini")))
     }
   }  
   }
 }
+
+## HIM models are 1 pixel = 75m2
+## SMP and generic models are 1 pixel = 225m2
+## possible alternative if HIM model is chosen:
+##  terra::disagg(crop_filename, fact = 3) but this results in 9 times
+##  as many cells and causes Circuitscape to crash (memory issue?)
 

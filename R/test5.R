@@ -5,20 +5,22 @@
 # run function on isolation_by_distance_taxa
 # for these taxa Circuitscape processing steps are not needed 
 
-# TURN ALL THIS INTO A FUNCTION?
+# Turn into a function to run on 'isolation_by_distance_taxa'
 ##  '31' IN THE CODE BELOW IS JUST FOR TESTING..
-some_function <- function(taxa, taxapath) {
+score_distance_taxa <- function(taxa, taxapath) {
   for (i in 1:nrow(taxa)) {
     taxon <- taxa[i, ]
+    
     
   }
 }
 
 
 # import preclusters preliminary dataframe for given taxon
-pre_clusters31 <- st_read(file.path(taxonpath,
+pre_clusters <- st_read(file.path(taxonpath,
         paste0(gsub(" ","_", taxon$ala_search_term),
         "_preclusters_prelim", ".shp"))) # 7 columns
+
 # column names in saved '.shp' file are truncated to 7 characters so rename
 pre_clusters31 <- pre_clusters31 |> 
   rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
@@ -201,15 +203,15 @@ some_function <- function(taxa, taxapath) {
   }
 }
 
-mid_clusters31 <- st_read(file.path(taxonpath,
+pre_clusters32 <- st_read(file.path(taxonpath,
           paste0(gsub(" ","_", taxon$ala_search_term),
           "_preclusters_prelim", ".shp"))) # 7 columns
 # column names in saved '.shp' file are truncated to 7 characters so rename
-mid_clusters31 <- mid_clusters31 |> 
+pre_clusters32 <- pre_clusters32 |> 
   rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
          recent_year = rcnt_yr)
 # add a new first column as placeholder for cluster number
-mid_clusters31 <- cbind(cluster = mid_clusters31$midcluster, mid_clusters31)
+pre_clusters32 <- cbind(cluster = pre_clusters32$midcluster, pre_clusters32)
 # 8 columns
 
 # derive clusters by iteratively grouping preclusters based on
@@ -241,7 +243,7 @@ if (file.exists(CScape_PATH1)){
   fcluster1 <- lapply(groups1,
             FUN = function(list.cor){rownames(pwise1)[list.cor]})
   for (j in 1:nrow(pwise1)) {
-    mid_clusters31$cluster[j] <- which(lapply(fcluster1,
+    pre_clusters32$cluster[j] <- which(lapply(fcluster1,
             function(x) grep(paste0("^",j,"$"),x))!=0) |> unname()
   }
   } else {
@@ -249,7 +251,7 @@ if (file.exists(CScape_PATH1)){
            taxon$ala_search_term, "\n")
 }
 # create summary table based on cluster number
-clusters_info31 <- mid_clusters31 |> dplyr::group_by(cluster) |> 
+clusters_info31 <- pre_clusters32 |> dplyr::group_by(cluster) |> 
   dplyr::summarise(midcluster = paste(midcluster, collapse = ", "),
           precluster = paste(precluster, collapse = ", "),
           pix_count = sum(pix_count), recent_year = max(recent_year),
@@ -263,6 +265,8 @@ obs_retest_filename <- file.path(taxonpath, paste0("clusters", ".tif"))
 crop_final_rast <- obs_retest_rast |> padded_trim()
 terra::crop(obs_retest_rast, crop_final_rast,
             filename = obs_retest_filename, overwrite = TRUE)
+# output clusters_info31 to a variable
+return(clusters_info31)
 
 ## TO DO: is the above a sufficiently robust method to determine
 ##  a 'resist_factor' (minimum resistance threshold for an initial pair
@@ -271,35 +275,13 @@ terra::crop(obs_retest_rast, crop_final_rast,
 ###  how much variance to allow for between high & low dispersal taxa??
 
 
-## prepare 2nd Circuitscape run --------
-
-## Now using "clusters.tif" as a new patches layer
-# read in the vanilla version of the Circuitscape.ini file with standard
-# settings for a Circuitscape pairwise run
-
-## TO DO: make this into a function..
-Cscape1path <- file.path(datapath, paste0("circuitscape_pwise", ".ini"))
-CSrun <- ini::read.ini(Cscape1path, encoding = getOption("encoding"))
-# produces a list of 11
-
-# update for source files relevant to the particular taxon:
-CSrun$`Habitat raster or graph`$habitat_file <- 
-  file.path(taxonpath, paste0("resistance.tif"))
-CSrun$`Options for pairwise and one-to-all and
-all-to-one modes`$point_file <-
-  file.path(taxonpath, paste0("clusters.tif"))
-CSrun$`Output options`$output_file <-
-  file.path(taxonpath, paste0("CSpwise2"))
-# save as a customized .ini file in the relevant directory
-ini::write.ini(CSrun, file.path(taxonpath,
-  paste0("Circuitscape_custom2", ".ini")))
-
-
 ## Run from Julia:
 # using Circuitscape
 
 
 ## import 2nd Circuitscape output matrix --------
+
+## TO DO: make a separate function from this
 pwise2 <- read.table(file.path(taxonpath,
         paste0("CSpwise2_resistances_3columns", ".out")), header = TRUE,
         sep = " ", col.names = c("cluster", "closest", "resistance"),
@@ -307,33 +289,18 @@ pwise2 <- read.table(file.path(taxonpath,
 # transform to find which is the next nearest cluster by resistance
 flip <- as.data.frame(cbind(pwise2[,2], pwise2[,1], pwise2[,3]))
 names(flip)<-names(pwise2)
+# this returns only the 1st minima (just in case there is more than one)
 pwise2 <- rbind(pwise2, flip) |> dplyr::group_by(cluster) |> 
-  dplyr::slice(which.min(resistance)) # returns only the 1st minima
+  dplyr::slice(which.min(resistance))
 
 
 ## 'isolation by resistance' Post-processing in R --------
 
-## if taxonA$filter_category == "isolation by resistance"
-
-# start with 7 column version of preclusters info file
-## TO DO: store as a variable in obs4.R that can be retrieved here
-
-# update the cluster number based on initial Circuitscape processing
-for (i in 1:nrow(pwise1)) {
-  pre_clusters31$cluster[i] <- which(lapply(fcluster1,
-      function(x) grep(paste0("^",i,"$"),x))!=0) |> unname()
-}
-
-# create summary table based on cluster number
-clusters_info31 <- pre_clusters31 |> dplyr::group_by(cluster) |> 
-  dplyr::summarize(pix_count = sum(pix_count), num_obs = sum(num_obs),
-        recent_year = max(recent_year),
-        latin = max(latin), geometry = sf::st_union(geometry)) # 6 columns
-
+# start with 8 column version of clusters info file
 # add new columns, including for next nearest cluster by resistance
 clusters_info31 <- clusters_info31 |> add_column(pop_name = NA,
         gene_div_special = NA, pix_ignore = 0, Ne_override = NA,
-        gene_div_weight = 0, lowest_resist = NA, closest = NA) # 13 columns
+        gene_div_weight = 0, lowest_resist = NA, closest = NA) # 15 columns
 
 # update lowest_resist column with next lowest resistance
 for (i in 1:nrow(clusters_info31)) {
@@ -348,14 +315,14 @@ for (i in 1:nrow(clusters_info31)) {
 # population (precluster) names in a supplementary file
 
 # import expert opinion estimates file for given taxon if file exists
-expert2_filename <- suppressWarnings(file.path(taxon_path(taxonA, taxapath), 
-            paste0("expert_op2_clusters", ".csv")))
-if (file.exists(expert2_filename)){
-  expert2 <- read.csv(expert2_filename, header = TRUE)
-  if (nrow(expert2) == nrow(clusters_info31)) {
-    clusters_info31$pop_name <- expert2$pop_name
-    clusters_info31$gene_div_special <- expert2$gene_div_special
-    clusters_info31$Ne_override <- expert2$Ne_override
+expert3_filename <- suppressWarnings(file.path(taxon_path(taxon, taxapath), 
+            paste0("expert_op3_clusters", ".csv")))
+if (file.exists(expert3_filename)){
+  expert3 <- read.csv(expert3_filename, header = TRUE)
+  if (nrow(expert3) == nrow(clusters_info31)) {
+    clusters_info31$pop_name <- expert3$pop_name
+    clusters_info31$gene_div_special <- expert3$gene_div_special
+    clusters_info31$Ne_override <- expert3$Ne_override
   }
   else {cat("\nWrong number of populations in expert info file!\n")
   }
@@ -398,7 +365,7 @@ for (i in 1:nrow(clusters_info31)) {
 ## Vic_popn_size should be == 0 if extinct in Vic or unknown
 clusters_info31 <- clusters_info31 |> 
   mutate(pix_pc = (pix_count / sum(pix_count))) |>
-  mutate(Ne_est = pix_pc * taxonA$vic_popn_size * 0.1)
+  mutate(Ne_est = pix_pc * taxon$vic_popn_size * 0.1)
 clusters_info31$Ne_est <- round(clusters_info31$Ne_est, digits = 0)
 # 15 columns
 
@@ -412,7 +379,7 @@ for (i in 1:nrow(clusters_info31)) {
 # add risk score calculation columns
 clusters_info31 <- clusters_info31 |> add_column(size_nearest = 0,
       gene_flow_factor = 0, div_risk = 0, inbreed_risk = 0,
-      cluster_score = 0) # 20 columns
+      cluster_score = 0) # 22 columns
 
 # derive size of nearest cluster..
 for (i in 1:nrow(clusters_info31)){
@@ -423,15 +390,17 @@ for (i in 1:nrow(clusters_info31)){
 
 # derive 'gene_flow_factor'
 ## TO FIX: Is this method appropriate?
-### TO DO: 2.2 INTO config.toml file?
+### TO DO: move 2.2 INTO config.toml file?
+res_factor2 <- (taxon$disperse_log * 3) + 6.3
 for (i in 1:nrow(clusters_info31)){
-  if(clusters_info31$lowest_resist[i] > (res_factor * 1.75)){
+  if(clusters_info31$lowest_resist[i] > (res_factor2 * 1.75)){
     clusters_info31$gene_flow_factor[i] <- 0
-  } else if (clusters_info31$lowest_resist[i] < res_factor) {
+  } else if (clusters_info31$lowest_resist[i] < res_factor2) {
     clusters_info31$gene_flow_factor[i] <- 1
   } else {
     clusters_info31$gene_flow_factor <-
-      (((res_factor * 2)-clusters_info31$lowest_resist)*(1/res_factor))^2.2
+      (((res_factor2 * 2)-clusters_info31$lowest_resist) *
+         (1/res_factor2))^2.2
     }
 }
 
@@ -479,7 +448,7 @@ for (i in 1:nrow(clusters_info31)) {
 ## use 'taxon' in place of 'taxonA' for main obs4.R script
 clusters_info31 |> sf::st_drop_geometry() |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-    taxonA$ala_search_term), "_clusters_info31", ".csv")))
+    taxon$ala_search_term), "_clusters_info31", ".csv")))
 
 
 # fragmented risk for a given taxon will be sum(clusters_info31$cluster_score)

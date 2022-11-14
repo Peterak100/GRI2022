@@ -50,4 +50,10 @@
 
 ### both all-to-one and one-to-all methods failed for the above!!
 
+## Run from Julia singly:
+# using Circuitscape
+# compute("/home/peter/data/taxa/
+#         Pseudemoia_cryodroma/Circuitscape_custom2.ini")
+# 18 patches (153 pairwise comparisons) took just over 10 mins in Windows
+#  and ~11.5 mins in Ubuntu
 
