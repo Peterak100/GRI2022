@@ -1,6 +1,11 @@
-## reworking of common.R
-### The following 8 packages are required (better to install manually?)
-# c("galah","fpc","lubridate","sf","terra","tidyverse","fs","RcppTOML")
+## Install and load required packages --------
+packages <- c("galah","fpc","lubridate","sf","fs","tidyverse",
+              "RcppTOML","terra","igraph","ini")
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
 
 library(galah)
 library(fpc) # has dbscan
