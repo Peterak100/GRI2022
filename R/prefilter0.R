@@ -1,5 +1,6 @@
 # reworking of prefilter.R (main script to run)
-setwd("/home/peter/GRI2022/R")
+GRI_dir <- getwd()
+setwd(paste0(GRI_dir,"/R"))
 source("common1.R")
 # source("verify2.R")
 source("categorize3.R")

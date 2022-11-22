@@ -22,10 +22,29 @@ library(ini)
 galah_config(email = "peterkriesner@yahoo.com", download_reason_id = 0,
              verbose = TRUE)
 
-# Load values --------
+## Load values --------
 
-# Primary path for all input data
-datapath <- file.path(path_home(), "data")
+# Set primary path for all input data
+Ubuntu_home <- "/home/peter/GRI2022"
+Q_home <- "Q:/peterk/GRI2022"
+PKWin11_home <- "C:/Users/peter/GRI2022"
+
+set_GRI <- function(GRI_dir) {
+  if (GRI_dir == Ubuntu_home) {
+  GRI_set <- "/home/peter"
+  } else if (GRI_dir == Q_home) {
+    GRI_set <- "Q:/peterk"
+  } else if (GRI_dir == PKWin11_home) {
+    GRI_set <- "C:/Users/peter"
+  } else {
+    cat("Starting directory was wrong!")
+  }
+  return(GRI_set)
+}
+GRI_home <- set_GRI(GRI_dir)
+
+# create a variable and set this to whatever is the home directory..
+datapath <- file.path(GRI_home, "data")
 
 ## Paths to particular files and folders
 taxapath <- file.path(datapath, "taxa")
