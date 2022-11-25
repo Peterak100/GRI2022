@@ -65,23 +65,17 @@ test1114 <- search_taxa(test1113$ala_search_term)
 test1115 <- test1114[,c(1,2,11:14)]
 
 
-
-
-
 ## NENAD'S IDEA
 test1 <- taxa
 results<-list()
 recheck<-list()
 for(i in nrow(test1)){
-try(taxonomyDF<-ala_species(taxa=test1))
+  try(taxonomyDF<-ala_species(taxa=test1))
   searchTerm<-test1$ala_search_term[i]
   if(nrow(taxonomyDF)>0){
     results[[test1]]<-taxonomyDF$genus
   } else {
     recheck[[test1]]<-test1
   }
-
-
-
-
+}
 

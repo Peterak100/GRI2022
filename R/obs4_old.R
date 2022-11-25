@@ -82,7 +82,7 @@ orphan_cellcount <- sum(terra::freq(orphan_rast)) # sum makes this numeric
 # this is returned as cell_counts in try_taxon_observations()
 ## ALSO NEED TO RETURN pclust_info FOR POST-PROCESSING
 return(c(precluster_cellcount, orphan_cellcount))
-}
+
 
 # Try taxon observations function --------
 ### Oct 2022: this function not currently used due to assumption that
