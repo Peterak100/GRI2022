@@ -26,6 +26,7 @@ galah_config(email = "peterkriesner@yahoo.com", download_reason_id = 0,
 
 # Set primary path for all input data
 Ubuntu_home <- "/home/peter/GRI2022"
+MacOS_home <- "/Users/bioinformatics/peterk/GRI2022"
 Q_home <- "Q:/peterk/GRI2022"
 PKWin11_home <- "C:/Users/peter/GRI2022"
 
@@ -34,6 +35,8 @@ set_GRI <- function(GRI_dir) {
   GRI_set <- "/home/peter"
   } else if (GRI_dir == Q_home) {
     GRI_set <- "Q:/peterk"
+  } else if (GRI_dir == MacOS_home) {
+    GRI_set <- "/Users/bioinformatics/peterk/GRI2022"
   } else if (GRI_dir == PKWin11_home) {
     GRI_set <- "C:/Users/peter"
   } else {
