@@ -141,6 +141,7 @@ score_distance_taxa <- function(taxa, taxapath) {
     }
     # overall risk due to fragmentation for the given taxon
     taxon <- taxon |> add_column(frag_risk = sum(pre_clusters$cluster_score))
+    ## TO DO: Where does frag_risk column get returned???
     ## TO DO: Add another new column for the final risk score after 
     ##  adjusting for various other factors
     

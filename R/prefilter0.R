@@ -63,6 +63,21 @@ close(job_file)
 # Write raster files for Circuitscape resistance models
 prepare_resistance_files(isolation_by_resistance_taxa, taxapath)
 
+
+# Combine updated isolation taxa with non-processed taxa
+other_taxa <- dplyr::filter(precategorized_taxa,
+            filter_category != "isolation by distance" &
+            filter_category != "isolation by resistance")
+## more columns to add?? # frag_risk = 0 ???
+other_taxa <- add_column(other_taxa, num_preclusters = 0, num_orphans = 0, 
+            precluster_cellcount = 0, orphan_cellcount = 0, error = NA) 
+
+categorized_taxa <- rbind(preclustered_isolation_taxa, other_taxa) # sort?
+
+write_csv(categorized_taxa, file.path(groupingspath, "categorized_taxa.csv"))
+
+
+
 ## First Circuitscape run from Julia using 'batch_jobs.txt'
 # see circuitscape6.R for instructions
 
@@ -75,15 +90,5 @@ score_resistance_taxa1(isolation_by_resistance_taxa, taxapath)
 
 score_resistance_taxa2(isolation_by_resistance_taxa, taxapath)
 
-# Combine updated isolation taxa with non-processed taxa
-other_taxa <- dplyr::filter(precategorized_taxa,
-        filter_category != "isolation by distance" &
-        filter_category != "isolation by resistance")
-## more columns to add??
-other_taxa <- add_column(other_taxa, num_preclusters = 0, num_orphans = 0, 
-        precluster_cellcount = 0, orphan_cellcount = 0, error = NA,
-        frag_risk = 0) 
-categorized_taxa <- rbind(preclustered_isolation_taxa, other_taxa) # sort?
 
-write_csv(categorized_taxa, file.path(groupingspath, "categorized_taxa.csv"))
 
