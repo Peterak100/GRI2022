@@ -55,11 +55,11 @@ set_DATA <- function(HOME_dir) {
   if (HOME_dir == Ubuntu_home) {
     DATA_set <- "/home/peter/data"
   } else if (HOME_dir == Q_home) {
-    GRI_set <- "Q:/peterk/data"
+    DATA_set <- "Q:/peterk/data"
   } else if (HOME_dir == MacOS_home) {
-    GRI_set <- "/Users/bioinformatics/peterk/data"
+    DATA_set <- "/Users/bioinformatics/peterk/data"
   } else if (HOME_dir == PKWin11_home) {
-    GRI_set <- "C:/Users/peter/data"
+    DATA_set <- "C:/Users/peter/data"
   } else {
     cat("Starting directory was wrong!")
   }
