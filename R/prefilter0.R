@@ -13,10 +13,8 @@ source("postprocess7.R")
 # Categorize risk using queries to ALA: slow.
 ## adds 4 columns to BATCH_TAXA_CSV:
 ## "state_count", "count", "risk", and "filter_category"
-start_time1 <- Sys.time()
 precategorized_taxa <- precategorize_risk(taxa)
-end_time1 <- Sys.time()
-end_time1 - start_time1 # ~1 to 1.3 mins for first 30 taxa records
+# ~1 to 1.3 mins for first 30 taxon records
 # display selected columns for first 14 taxa..
 # head(precategorized_taxa[,c(1,2,39, 94:97)],14)
 

@@ -135,11 +135,15 @@ precategorize_chunk <- function(taxa) {
 # Main function --------
 
 precategorize_risk <- function(taxa) {
+  start_time1 <- Sys.time()
   n <- nrow(taxa)
   r <- rep(1:ceiling(n/GALAH_MAXROWS), each=GALAH_MAXROWS)[1:n]
   s <- lapply(split(taxa, r), precategorize_chunk)
   # Split apply combine chunks
   do.call(rbind, s)
+  end_time1 <- Sys.time()
+  precategorize_time <- end_time1 - start_time1
+  cat(paste0("Time to precategorize taxa was ", precategorize_time,"\n"))
 }
 # test_K <- precategorize_risk(taxa)
 ## test_K[,c(1,2,38,98:102)] ## should also be same result as test_H
