@@ -3,7 +3,7 @@
 isolation_taxa[, c(1,2,39,43,94:97)]
 # test a single taxon (substitute row number for taxon to be tested)
 
-taxonA <- isolation_taxa[9, ]
+taxonA <- isolation_taxa[2, ]
 taxonA[c(1,2)]
 
 # Add new columns to single 'taxon' dataframe
@@ -102,7 +102,7 @@ terra::crop(orphan_rast31, crop_orph_rast31,
 AoO_FILE <- paste0("AoO_",gsub(" ","_", taxonA$ala_search_term), ".shp")
 AoO_PATH <- file.path(AoOpath, AoO_FILE)
 if (file.exists(AoO_PATH)){
-  AoO1 <- sf::st_read(AoO_PATH)
+  AoO1 <- sf::st_read(AoO_PATH, quiet = TRUE)
   AoO1 <- AoO1[,c(2,13)] # a single multipolygon
   # separates single multipolygon into separate polygons, then buffers
   ## buffer distance here is < buffer for individual observations

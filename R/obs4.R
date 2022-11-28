@@ -169,9 +169,9 @@ buffer_orphans <- function(shapes, scaled_eps) {
 ##  because it is a non-exportable object?
 ## why print(shapes) & print(shapevect)? (lines 2 & 4 of this function)
 pre_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
-  print(shapes)
+  # print(shapes)
   shapevect <- terra::vect(shapes)
-  print(shapevect)
+  # print(shapevect)
   if (length(shapevect) > 0) {
     obs_raster <- terra::rasterize(shapevect, mask_layer,
                     field = "precluster")
@@ -182,9 +182,9 @@ pre_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
 
 # new function to rasterize midclusters
 mid_shapes_to_raster <- function(shapes, taxon, mask_layer, taxonpath) {
-  print(shapes)
+  # print(shapes)
   shapevect <- terra::vect(shapes)
-  print(shapevect)
+  # print(shapevect)
   if (length(shapevect) > 0) {
     obs_raster <- terra::rasterize(shapevect, mask_layer,
                     field = "midcluster")
@@ -306,7 +306,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   AoO_FILE <- paste0("AoO_", gsub(" ","_", taxon$ala_search_term), ".shp")
   AoO_PATH <- file.path(AoOpath, AoO_FILE)
   if (file.exists(AoO_PATH)){
-    AoO1 <- sf::st_read(AoO_PATH)
+    AoO1 <- sf::st_read(AoO_PATH, quiet = TRUE)
     AoO1 <- AoO1[,c(2,13)] # a single multipolygon
     # separates single multipolygon into separate polygons, then buffers
     ## buffer distance here is < buffer for individual observations
@@ -426,6 +426,7 @@ label_by_clusters <- function(taxa) {
 ##  and writes to both csv and raster files
 
 process_observations <- function(taxa, mask_layer, taxapath) {
+  start_time1 <- Sys.time()
   # Add new columns to taxa dataframe
   preclustered_taxa <- add_column(taxa, num_preclusters = 0,
               num_orphans = 0, precluster_cellcount = 0,
@@ -452,6 +453,9 @@ process_observations <- function(taxa, mask_layer, taxapath) {
     preclustered_taxa[i, ]$precluster_cellcount <- cell_counts[1]
     preclustered_taxa[i, ]$orphan_cellcount <- cell_counts[2]
     }
+  end_time1 <- Sys.time()
+  process_obs_time <- end_time1 - start_time1
+  print(process_obs_time)
   return(label_by_clusters(preclustered_taxa))
 }
 
@@ -465,10 +469,14 @@ process_observations <- function(taxa, mask_layer, taxapath) {
 # }
 
 retrieve_bulk_obs <- function(taxa) {
+  start_time1 <- Sys.time()
   # Loop over each taxon
   for (i in 1:nrow(taxa)) {
     taxon <- taxa[i, ]
     # Download observation records and write to csv files
     obs <- download_observations(taxon)
-    }
+  }
+  end_time1 <- Sys.time()
+  obs_retrieve_time <- end_time1 - start_time1
+  print(obs_retrieve_time)
 }

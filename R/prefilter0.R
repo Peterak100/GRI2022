@@ -13,7 +13,7 @@ source("postprocess7.R")
 # Categorize risk using queries to ALA: slow.
 ## adds 4 columns to BATCH_TAXA_CSV:
 ## "state_count", "count", "risk", and "filter_category"
-precategorized_taxa <- precategorize_risk(taxa)
+precategorized_taxa <- precategorize_risk(taxa) # categorize3.R line 137
 # ~1 to 1.3 mins for first 30 taxon records
 # display selected columns for first 14 taxa..
 # head(precategorized_taxa[,c(1,2,39, 94:97)],14)
@@ -30,19 +30,14 @@ isolation_taxa <- dplyr::filter(precategorized_taxa,
 
 # Initial bulk download of all observations and write to individual
 ## .csv files, no further processing
-start_time1 <- Sys.time()
-retrieve_bulk_obs(isolation_taxa)
-end_time1 <- Sys.time()
-end_time1 - start_time1
+retrieve_bulk_obs(isolation_taxa) # obs4.R line 471
 
 # adds another 5 columns to isolation_taxa
 # omitting 'throw_errors=TRUE' as 4th argument to function
-start_time1 <- Sys.time()
 preclustered_isolation_taxa <- process_observations(isolation_taxa,
-        mask_layer, taxapath)
-end_time1 <- Sys.time()
-end_time1 - start_time1 # ~4.41 mins for first 30 taxon records
-
+        mask_layer, taxapath) # obs4.R line 428
+# ~4.41 mins for first 30 taxon records
+# Throws an error for 1st taxon only, and only when run the 1st time???
 
 ## WHAT DOES / WOULD 'throw_errors=TRUE' DO IN THE ABOVE FUNCTION?
 

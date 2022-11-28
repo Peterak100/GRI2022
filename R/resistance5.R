@@ -55,7 +55,7 @@ prepare_resistance_files <- function(taxa, taxapath) {
       resistance_filename <- suppressWarnings(file.path(taxon_path(taxon,
                 taxapath), RESISTANCE_RASTER))
     if (file.exists(crop_filename)) {
-      choose_resistance_model(taxon, taxapath, crop_filename)
+      res_model <- choose_resistance_model(taxon, taxapath, crop_filename)
       res_layer <- terra::rast(res_model)
       # HIM models are 1 pixel = 75m2, so need to aggregate cells by
       # factor of 3 so that 1 pixel = 225m2 to match preclusters
@@ -74,24 +74,29 @@ prepare_resistance_files <- function(taxa, taxapath) {
       # produces a list of 11
       # update .ini files with source files relevant to particular taxon:
       CSrun$`Habitat raster or graph`$habitat_file <-
-        file.path(taxonpath, paste0("resistance", ".tif"))
+        suppressWarnings(file.path(taxon_path(taxon, taxapath),
+                paste0("resistance", ".tif")))
       CSrun$`Options for pairwise and one-to-all and
       all-to-one modes`$point_file <-
-        file.path(taxonpath, paste0("preclusters", ".tif"))
+        suppressWarnings(file.path(taxon_path(taxon, taxapath),
+                paste0("preclusters", ".tif")))
       CSrun$`Output options`$output_file <-
-        file.path(taxonpath, paste0("CSpwise1"))
+        suppressWarnings(file.path(taxon_path(taxon, taxapath),
+                paste0("CSpwise1")))
       # save as a customized .ini file in the relevant directory
-      ini::write.ini(CSrun, file.path(taxonpath,
-        paste0("Circuitscape_custom1", ".ini")))
+      ini::write.ini(CSrun, suppressWarnings(file.path(taxon_path(taxon,
+                taxapath), paste0("Circuitscape_custom1", ".ini"))))
       # make a 2nd .ini file for 2nd Circuitscape run:
       CSrun$`Options for pairwise and one-to-all and
       all-to-one modes`$point_file <-
-        file.path(taxonpath, paste0("clusters", ".tif"))
+        suppressWarnings(file.path(taxon_path(taxon, taxapath),
+                paste0("clusters", ".tif")))
       CSrun$`Output options`$output_file <-
-        file.path(taxonpath, paste0("CSpwise2"))
+        suppressWarnings(file.path(taxon_path(taxon, taxapath),
+                paste0("CSpwise2")))
       # save as a 2nd customized .ini file in the relevant directory
-      ini::write.ini(CSrun, file.path(taxonpath,
-        paste0("Circuitscape_custom2", ".ini")))
+      ini::write.ini(CSrun, suppressWarnings(file.path(taxon_path(taxon,
+                taxapath), paste0("Circuitscape_custom2", ".ini"))))
     }
   }  
   }
