@@ -2,6 +2,8 @@
 packages <- c("galah","fpc","lubridate","sf","fs","tidyverse",
               "RcppTOML","terra","igraph","ini")
 # Install packages not yet installed
+## Note: "sf" is difficult and probably requires gdal to be installed
+## outside of R for MacOS and Linux
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
   install.packages(packages[!installed_packages])
@@ -24,30 +26,49 @@ galah_config(email = "peterkriesner@yahoo.com", download_reason_id = 0,
 
 ## Load values --------
 
-# Set primary path for all input data
-Ubuntu_home <- "/home/peter/GRI2022"
-MacOS_home <- "/Users/bioinformatics/peterk/GRI2022"
-Q_home <- "Q:/peterk/GRI2022"
-PKWin11_home <- "C:/Users/peter/GRI2022"
+# Set primary path for all input data depending on computing environment
+Ubuntu_home <- "/home/peter"
+MacOS_home <- "/Users/bioinformatics"
+Q_home <- "Q:"
+PKWin11_home <- "C:/Users/peter"
 
-set_GRI <- function(GRI_dir) {
-  if (GRI_dir == Ubuntu_home) {
-  GRI_set <- "/home/peter"
-  } else if (GRI_dir == Q_home) {
-    GRI_set <- "Q:/peterk"
-  } else if (GRI_dir == MacOS_home) {
+HOME_dir <- fs::path_home()
+
+set_GRI <- function(HOME_dir) {
+  if (HOME_dir == Ubuntu_home) {
+  GRI_set <- "/home/peter/GRI2022"
+  } else if (HOME_dir == Q_home) {
+    GRI_set <- "Q:/peterk/GRI2022"
+  } else if (HOME_dir == MacOS_home) {
     GRI_set <- "/Users/bioinformatics/peterk/GRI2022"
-  } else if (GRI_dir == PKWin11_home) {
-    GRI_set <- "C:/Users/peter"
+  } else if (HOME_dir == PKWin11_home) {
+    GRI_set <- "C:/Users/peter/Documents/R/GRI2022" # not set up yet
   } else {
     cat("Starting directory was wrong!")
   }
   return(GRI_set)
 }
-GRI_home <- set_GRI(GRI_dir)
+GRI_dir <- set_GRI(HOME_dir)
+setwd(paste0(GRI_dir,"/R"))
 
-# create a variable and set this to whatever is the home directory..
-datapath <- file.path(GRI_home, "data")
+set_DATA <- function(HOME_dir) {
+  if (HOME_dir == Ubuntu_home) {
+    DATA_set <- "/home/peter/data"
+  } else if (HOME_dir == Q_home) {
+    GRI_set <- "Q:/peterk/data"
+  } else if (HOME_dir == MacOS_home) {
+    GRI_set <- "/Users/bioinformatics/peterk/data"
+  } else if (HOME_dir == PKWin11_home) {
+    GRI_set <- "C:/Users/peter/data"
+  } else {
+    cat("Starting directory was wrong!")
+  }
+  return(DATA_set)
+}
+DATA_dir <- set_DATA(HOME_dir)
+
+# set data path depending on computing environment
+datapath <- file.path(DATA_dir)
 
 ## Paths to particular files and folders
 taxapath <- file.path(datapath, "taxa")
