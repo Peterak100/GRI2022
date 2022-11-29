@@ -76,8 +76,7 @@ prepare_resistance_files <- function(taxa, taxapath) {
       CSrun$`Habitat raster or graph`$habitat_file <-
         suppressWarnings(file.path(taxon_path(taxon, taxapath),
                 paste0("resistance", ".tif")))
-      CSrun$`Options for pairwise and one-to-all and
-      all-to-one modes`$point_file <-
+      CSrun$`Options for pairwise and one-to-all and all-to-one modes`$point_file <-
         suppressWarnings(file.path(taxon_path(taxon, taxapath),
                 paste0("preclusters", ".tif")))
       CSrun$`Output options`$output_file <-
@@ -87,8 +86,7 @@ prepare_resistance_files <- function(taxa, taxapath) {
       ini::write.ini(CSrun, suppressWarnings(file.path(taxon_path(taxon,
                 taxapath), paste0("Circuitscape_custom1", ".ini"))))
       # make a 2nd .ini file for 2nd Circuitscape run:
-      CSrun$`Options for pairwise and one-to-all and
-      all-to-one modes`$point_file <-
+      CSrun$`Options for pairwise and one-to-all and all-to-one modes`$point_file <-
         suppressWarnings(file.path(taxon_path(taxon, taxapath),
                 paste0("clusters", ".tif")))
       CSrun$`Output options`$output_file <-
