@@ -365,10 +365,15 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   }
   # save mid/pre clusters as sf object file to retrieve for post processing
   # see: https://r-spatial.github.io/sf/articles/sf2.html
-  pclust_info |>  suppressWarnings(sf::write_sf(file.path(taxonpath,
+  pclust_info |>  sf::write_sf(file.path(taxonpath,
           paste0(gsub(" ","_", taxon$ala_search_term),
-          "_preclusters_prelim", ".shp"))))
+          "_preclusters_prelim", ".shp")))
   # suppressed warning: Field names abbreviated for ESRI Shapefile driver
+  cat("Number of midclusters for", taxon$ala_search_term,":",
+      nrow(pclust_info), "\n")
+  pclust_info |> sf::st_drop_geometry() |> write_csv(file.path(taxonpath,
+          paste0(gsub(" ","_", taxon$ala_search_term),
+          "_preclusters_prelim", ".csv")))
   precluster_cellcount <- sum(terra::freq(precluster_rast))
   grouped_cellcount <- max(precluster_cellcount, midcluster_cellcount)
   orphan_cellcount <- sum(terra::freq(orphan_rast)) # sum makes it numeric

@@ -47,7 +47,7 @@ taxonpath <- suppressWarnings(taxon_path(taxonA, taxapath))
 shapes31 <- sf::st_as_sf(test79, coords = c("x", "y"), crs = METRIC_EPSG)
 scaled_eps31 <- taxonA$epsilon * 1000 * EPSILON_SENSITIVITY_SCALAR
 preclustered_obs31 <- buffer_preclustered(shapes31, scaled_eps31) # 2 columns
-precluster_rast31 <- shapes_to_raster(preclustered_obs31, taxonA,
+precluster_rast31 <- pre_shapes_to_raster(preclustered_obs31, taxonA,
           mask_layer, taxonpath)
 
 png(file = file.path(taxonpath, paste0(gsub(" ", "_",
@@ -78,7 +78,8 @@ pclust_info31 <- left_join(pclust_info31, pclust_num31, by = "precluster")
 midcluster_cellcount31 <- 0
 
 orphan_obs31 <- buffer_orphans(shapes31, scaled_eps31)
-orphan_rast31 <- shapes_to_raster(orphan_obs31, taxon, mask_layer, taxonpath)
+orphan_rast31 <- pre_shapes_to_raster(orphan_obs31, taxon, mask_layer,
+      taxonpath)
 
 png(file = file.path(taxonpath, paste0(gsub(" ","_", taxonA$ala_search_term),
       "_orphans31", ".png")), width = 2160, height = 1440, pointsize = 30)
@@ -168,6 +169,12 @@ if (file.exists(AoO_PATH)){
 pclust_info31 |> sf::write_sf(file.path(taxonpath, paste0(gsub(" ","_",
           taxonA$ala_search_term), "_preclusters_prelim", ".shp")))
 # throws a warning: Field names abbreviated for ESRI Shapefile driver
+cat("Number of midclusters for", taxonA$ala_search_term,":",
+    nrow(pclust_info31), "\n")
+pclust_info31 |> sf::st_drop_geometry() |> write_csv(file.path(taxonpath,
+          paste0(gsub(" ","_", taxonA$ala_search_term),
+          "_preclusters_prelim", ".csv")))
+
 
 ### Make a mask layer???
 # add two rows and save for use as mask_file in Circuitscape?
