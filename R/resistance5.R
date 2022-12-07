@@ -54,7 +54,7 @@ prepare_resistance_files <- function(taxa, taxapath) {
                 taxapath), paste0("preclusters", ".tif")))
       resistance_filename <- suppressWarnings(file.path(taxon_path(taxon,
                 taxapath), RESISTANCE_RASTER))
-    if (file.exists(crop_filename)) {
+      if (file.exists(crop_filename)) {
       res_model <- choose_resistance_model(taxon, taxapath, crop_filename)
       res_layer <- terra::rast(res_model)
       # HIM models are 1 pixel = 75m2, so need to aggregate cells by
@@ -68,6 +68,7 @@ prepare_resistance_files <- function(taxa, taxapath) {
       terra::writeRaster(filename = resistance_filename, overwrite = TRUE)
       # read in a vanilla version of the Circuitscape.ini file with
       # standard settings for a Circuitscape pairwise run
+      ## Need to adjust paths if not on Ubuntu
       Cscape1path <- file.path(datapath,
                 paste0("circuitscape_pwise", ".ini"))
       CSrun <- ini::read.ini(Cscape1path, encoding = getOption("encoding"))

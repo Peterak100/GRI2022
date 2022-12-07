@@ -5,20 +5,15 @@
 # run function on isolation_by_distance_taxa
 # for these taxa Circuitscape processing steps are not needed 
 
-# Turn into a function to run on 'isolation_by_distance_taxa'
+# run on 'isolation_by_distance_taxa'
 ##  '31' IN THE CODE BELOW IS JUST FOR TESTING..
-score_distance_taxa <- function(taxa, taxapath) {
-  for (i in 1:nrow(taxa)) {
-    taxon <- taxa[i, ]
-    
-    
-  }
-}
 
+taxonA <- isolation_taxa[9, ]
+taxonA[c(1,2)]
 
 # import preclusters preliminary dataframe for given taxon
-pre_clusters <- st_read(file.path(taxonpath,
-        paste0(gsub(" ","_", taxon$ala_search_term),
+pre_clusters31 <- st_read(file.path(taxon_path(taxonA, taxapath),
+        paste0(gsub(" ","_", taxonA$ala_search_term),
         "_preclusters_prelim", ".shp"))) # 7 columns
 
 # column names in saved '.shp' file are truncated to 7 characters so rename
@@ -42,18 +37,29 @@ pre_clusters31 <- pre_clusters31 |> add_column(pop_name = NA,
 ## local population (precluster) names in a supplementary file
 
 # import expert opinion estimates file for given taxon if file exists
-expert1_filename <- suppressWarnings(file.path(taxon_path(taxon, taxapath), 
+expert1_filename <- suppressWarnings(file.path(taxon_path(taxonA, taxapath), 
                 paste0("expert_op1_preclust", ".csv")))
-if (file.exists(expert1_filename)){
-  expert1 <- read.csv(expert1_filename, header = TRUE)
-  if (nrow(expert1) == nrow(pre_clusters31)) {
-    pre_clusters31$pop_name <- expert1$pop_name
-    pre_clusters31$gene_div_special <- expert1$gene_div_special
-    pre_clusters31$Ne_override <- expert1$Ne_override
-  }
-  else {cat("\nWrong number of populations in expert info file!\n")
-    }
+expert2_filename <- suppressWarnings(file.path(taxon_path(taxonA, taxapath), 
+                paste0("expert_op2_midclust", ".csv")))
+
+if (file.exists(expert2_filename)){
+  expert_op <- read.csv(expert2_filename, header = TRUE)
+  } else {
+    if (file.exists(expert1_filename)){
+      expert_op <- read.csv(expert1_filename, header = TRUE)
+      }
 }
+
+if (exists("expert_op")) {
+  if (nrow(expert_op) == nrow(pre_clusters31)) {
+    pre_clusters31$pop_name <- expert_op$pop_name
+    pre_clusters31$gene_div_special <- expert_op$gene_div_special
+    pre_clusters31$Ne_override <- expert_op$Ne_override
+  } else {
+    cat("\nWrong number of populations in expert info file!\n")
+  }
+}    
+
 
 # then for any clusters where 'gene_div_special' is not NA; 
 # copy value of 'pix_count' column to 'pix_ignore' column
@@ -189,23 +195,17 @@ for (i in 1:nrow(pre_clusters31)) {
 ## use 'taxon' in place of 'taxonA' for main obs4.R script
 pre_clusters31 |> sf::st_drop_geometry() |> 
   write_csv(file.path(taxonpath, paste0(gsub(" ","_",
-  taxonA$ala_search_term), "_preclusters_info", ".csv")))
+  taxonA$ala_search_term), "_preclusters31_info", ".csv")))
 
 
 
 ## import 1st Circuitscape output matrix --------
 # need to import the saved 'sf' object
 
-some_function <- function(taxa, taxapath) {
-  for (i in 1:nrow(taxa)) {
-    taxon <- taxa[i, ]
-    
-  }
-}
-
-pre_clusters32 <- st_read(file.path(taxonpath,
+taxonpath <- taxon_path(taxonA, taxapath)
+pre_clusters32 <- sf::st_read(file.path(taxonpath,
           paste0(gsub(" ","_", taxon$ala_search_term),
-          "_preclusters_prelim", ".shp"))) # 7 columns
+          "_preclusters_prelim", ".shp")), quiet = TRUE) # 7 columns
 # column names in saved '.shp' file are truncated to 7 characters so rename
 pre_clusters32 <- pre_clusters32 |> 
   rename(midcluster = mdclstr, precluster = prclstr, pix_count = pix_cnt,
