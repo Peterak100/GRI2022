@@ -93,6 +93,7 @@ taxa <- read.csv(BATCH_TAXA_CSV_PATH, header = TRUE)
 # Access config.toml file and load 13 config variables --------
 CONFIG_FILE <- "config.toml"
 CONFIG_PATH <- file.path(datapath, CONFIG_FILE)
+# this loads the options set in the config.toml file
 list2env(RcppTOML::parseTOML(file.path(datapath, CONFIG_FILE)), globalenv())
 ## expanded basisOfRecord (cannot put >1 option in TOML file?):
 ## other options are:

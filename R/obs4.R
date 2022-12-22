@@ -254,7 +254,7 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
   shapes <- sf::st_as_sf(obs, coords = c("x", "y"), crs = METRIC_EPSG)
   scaled_eps <- taxon$epsilon * 1000 * EPSILON_SENSITIVITY_SCALAR
   preclustered_obs <- buffer_preclustered(shapes, scaled_eps)
-  cat("Num preclusters for", taxon$ala_search_term,":",
+  cat("Number of preclusters for", taxon$ala_search_term,":",
       nrow(preclustered_obs), "\n")
   precluster_rast <- pre_shapes_to_raster(preclustered_obs, taxon,
         mask_layer, taxonpath)
