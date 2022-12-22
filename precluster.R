@@ -18,8 +18,8 @@ isolation_by_resistance_taxa <- dplyr::filter(preclustered_isolation_taxa,
 job_file <- file(file.path(datapath, "batch_jobs.txt"))
 underscored <- gsub(" ", "_", isolation_by_resistance_taxa$ala_search_term)
 writeLines(underscored, job_file)
-cat(paste0("batch_jobs",".txt"," for Circuitscape written to ",
-           file.path(datapath)))
+cat(paste0("batch_jobs",".txt"," for Circuitscape written to:", "\n",
+           file.path(datapath), "\n"))
 close(job_file)
 prepare_resistance_files(isolation_by_resistance_taxa, taxapath)
 other_taxa <- dplyr::filter(precategorized_taxa,
