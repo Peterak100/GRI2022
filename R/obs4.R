@@ -344,10 +344,10 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
     # also need to save a .tif file for Circuitscape patches layer
     crop_mid_rast <- terra::merge(midcluster_rast, orphan_rast) |> 
       padded_trim()
-    preclust_filename <- file.path(taxonpath, paste0("preclusters", ".tif"))
+    midclust_filename <- file.path(taxonpath, paste0("preclusters", ".tif"))
     # crop and write midcluster raster as .tif file
     terra::crop(midcluster_rast, crop_mid_rast,
-          filename = preclust_filename, overwrite = TRUE)
+          filename = midclust_filename, overwrite = TRUE)
     # recalculate 'pix_count'
     pixel_mid_freq <- terra::freq(midcluster_rast)
     pclust_info$pix_count <- pixel_mid_freq$count
@@ -362,6 +362,9 @@ write_precluster <- function(obs, taxon, mask_layer, taxapath) {
       padded_trim()
     # crop and write precluster raster as .tif file
     preclust_filename <- file.path(taxonpath, paste0("preclusters", ".tif"))
+    # crop and write precluster raster as .tif file ????
+    terra::crop(precluster_rast, crop_rast,
+          filename = preclust_filename, overwrite = TRUE)
   }
   # save mid/pre clusters as sf object file to retrieve for post processing
   # see: https://r-spatial.github.io/sf/articles/sf2.html
